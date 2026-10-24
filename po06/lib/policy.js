@@ -93,6 +93,9 @@ export function policyFor(settings, sessionId) {
     // 由 strategy.js 唯一决定；下游（解释层提示词、编译器、只读工具）读 `pol.strategy`。
     tier: tierOf(effectiveSettings(settings, sessionId)),
     strategy: strategyForTier(tierOf(effectiveSettings(settings, sessionId))),
+    // 提示开关必须经过政策层才能到达宿主与消费者；漏接会让「以后不再显示」失效。
+    presetNoticeDismissed: s.presetNoticeDismissed,
+    skipHintDismissed: s.skipHintDismissed,
   }
 }
 

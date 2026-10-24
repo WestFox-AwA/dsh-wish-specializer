@@ -92,6 +92,13 @@ test('host context callback includes persisted gap state, honors off gate and se
  }finally{adapter.enableGate=old.gate;adapter.policyNow=old.policy;adapter.reviewFeedback=old.feedback}
 })
 
+test('issue #38：动态上下文保留 cwd 等模板样字面量，不让宿主解析',async()=>{
+ const {adapter}=await import('../lib/index.js')
+ let provider
+ adapter.registerContext({inject:(_services,cb)=>cb({systemPrompt:{context:p=>{provider=p;return ()=>{}}}})})
+ assert.equal(provider.interpolate,false,'动态意图文本不是宿主变量模板，必须逐字保留')
+})
+
 test('empty material pass cannot close; material addition can close in same request',()=>{
  const root=mkdtempSync(join(tmpdir(),'advisor-empty-'));try{
   writeFileSync(join(root,'a.js'),'a'); const store=createAdvisorCoverage({home:root})
