@@ -23,7 +23,8 @@ test('触发：一次 DSH 运行进程最多提示一次（不再判断预设）
   assert.ok(CLIENT_SRC.includes('let PRESET_NOTICE_SHOWN = false'), '进程级标记')
   assert.ok(CLIENT_SRC.includes('if (!sessionId || PRESET_NOTICE_SHOWN) return'), '已经提示过就不再弹')
   assert.ok(CLIENT_SRC.includes('PRESET_NOTICE_SHOWN = true'), '提示/或已关闭后都要标记')
-  assert.ok(/\}, \[sessionId, s && s\.presetNoticeDismissed\]\)/.test(CLIENT_SRC), '会话变化即触发，并尊重 dismissed')
+  assert.ok(/\}, \[sessionId, data, s && s\.presetNoticeDismissed\]\)/.test(CLIENT_SRC), '会话或首个状态快照变化即触发，并尊重 dismissed')
+  assert.ok(CLIENT_SRC.includes('if (!data) return'), '首帧状态未知时必须等待，不能抢先弹或提前标记')
   // 不再为弹窗去问 /preset（也不再拿预设做判据）
   assert.equal(CLIENT_SRC.includes("apiGet('/preset?via=enter"), false, '发送路径不再被预设闸门拦住')
   assert.equal(CLIENT_SRC.includes('presetLabelIn'), false, '不再读按钮文案')

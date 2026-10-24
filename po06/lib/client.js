@@ -2902,9 +2902,10 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         if (!sessionId || PRESET_NOTICE_SHOWN) return
         // 点过「以后不再显示」⇒ 直接标记，之后连判断都不做
         if (s && s.presetNoticeDismissed === true) { PRESET_NOTICE_SHOWN = true; return }
+        if (!data) return // 首帧快照未到：等待真实设置，既不抢先弹也不提前标记为已提示
         PRESET_NOTICE_SHOWN = true
         setNotice({ preset: '', intro: true })
-      }, [sessionId, s && s.presetNoticeDismissed])
+      }, [sessionId, data, s && s.presetNoticeDismissed])
       // 第二个触发（2026-10-19 用户）：**在新会话里把预设切到非 PTC/Wish** 时也要弹。
       // 只认"预设真的变了"（宿主返回的 presetAt 变化），挂载/首帧不弹，避免又变成乱弹。
       React.useEffect(() => {
@@ -5041,6 +5042,7 @@ const react = require("react")
         tokenVars: TOKEN_VARS,
         themeIsDark,
         themeTokensCss,
+        ControlBar,
       }
 
       const dispose = () => {

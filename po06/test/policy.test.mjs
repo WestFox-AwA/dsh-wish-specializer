@@ -59,6 +59,16 @@ t('budget 三档 → 提问配额 1/2/3', () => {
   eq(policyFor({ budget: 'x' }).maxQuestions, 3, '非法值 ⇒ 回落默认（generous ⇒ 3）')
 })
 
+t('issue #37：两个不再提示开关独立经过政策，组合状态也不串扰', () => {
+  for (const key of ['presetNoticeDismissed', 'skipHintDismissed']) {
+    eq(policyFor({ [key]: true })[key], true, key + '=true 必须到达政策消费者')
+    eq(policyFor({ [key]: false })[key], false, key + '=false 不能被常量化')
+  }
+  const both = policyFor({ presetNoticeDismissed: true, skipHintDismissed: true })
+  eq(both.presetNoticeDismissed, true, '预设提示已永久关闭')
+  eq(both.skipHintDismissed, true, '跳过提示已永久关闭')
+})
+
 // ── ③ 读配置：坏文件/缺文件都要能给出**默认政策**，不抛 ──────────────────
 t('readPolicy：缺文件/坏 JSON/字段乱写 ⇒ 一律默认政策（绝不抛、绝不放宽）', () => {
   const dir = mkdtempSync(join(tmpdir(), 'po06-pol-')); DIRS.push(dir)
