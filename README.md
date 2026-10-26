@@ -28,7 +28,7 @@
 
 ## 效果对比
 
-环境：Windows + DSH + PTC 预设，一次成图（OneShot），插件档位「重度」，模型 DeepSeek-V4.1-Flash-0910。
+环境：Windows + DSH + PTC 预设，一轮直出（OneShot），插件档位「重度」，模型 DeepSeek-V4.1-Flash-0910。
 
 ![](./docs/image/contrast_small.png)
 
