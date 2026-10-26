@@ -27,7 +27,7 @@ In one sentence: **your words stay untouched; the missing half is supplied.**
 
 ## Side by side
 
-Windows + DSH + PTC preset, one shot, tier "Heavy", model DeepSeek-V4.1-Flash.
+Windows + DSH + PTC preset, one shot, tier "Heavy", model DeepSeek-V4.1-Flash-0910.
 
 ![](./docs/image/contrast_small.png)
 
