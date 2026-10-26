@@ -1,8 +1,8 @@
 {
-  "at": "2026-10-25T17:06:48.543Z",
+  "at": "2026-10-25T17:43:39.125Z",
   "package": {
     "name": "@dsh-external/dsh-wish-specializer",
-    "version": "0.9.0-beta-1"
+    "version": "0.9.0-stable"
   },
   "contractVersions": {
     "interpreter": null,
@@ -342,7 +342,7 @@
       "bytes": 2636
     }
   },
-  "packageJsonSha256": "cd4823b9aa4f9b3e5602e0ef429b91938f3a7a4525ba61cfae91aec4e0bd3f47",
+  "packageJsonSha256": "7cbc6f67859fbfac570dc83dd21c43dc216e2427f7617eaffadb8c9f82f85746",
   "tests": {
     "adaptive-collaboration.test.mjs": {
       "pass": 9,
@@ -351,8 +351,8 @@
       "runner": "node:test"
     },
     "advisor-claim-evidence.test.mjs": {
-      "pass": 13,
-      "fail": 13,
+      "pass": 26,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -363,14 +363,14 @@
       "runner": "node:test"
     },
     "advisor-contribution-memory.test.mjs": {
-      "pass": 5,
-      "fail": 2,
+      "pass": 7,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "advisor-coverage.test.mjs": {
-      "pass": 1,
-      "fail": 8,
+      "pass": 9,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -381,8 +381,8 @@
       "runner": "node:test"
     },
     "advisor-delivery.test.mjs": {
-      "pass": 9,
-      "fail": 2,
+      "pass": 11,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -405,8 +405,8 @@
       "runner": "node:test"
     },
     "advisor-feedback.test.mjs": {
-      "pass": 6,
-      "fail": 7,
+      "pass": 13,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -423,8 +423,8 @@
       "runner": "node:test"
     },
     "advisor-host-registration.test.mjs": {
-      "pass": 0,
-      "fail": 1,
+      "pass": 1,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -435,30 +435,32 @@
       "runner": "node:test"
     },
     "advisor-loop-integration.test.mjs": {
-      "pass": 3,
-      "fail": 13,
+      "pass": 16,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "advisor-materials.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 13,
+      "fail": 0,
+      "skipped": 0,
+      "runner": "node:test"
     },
     "advisor-open-issue-30.test.mjs": {
-      "pass": 5,
-      "fail": 3,
+      "pass": 8,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "advisor-progress-delta.test.mjs": {
-      "pass": 0,
-      "fail": 7,
+      "pass": 7,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "advisor-progress.test.mjs": {
-      "pass": 7,
-      "fail": 2,
+      "pass": 9,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -481,8 +483,10 @@
       "runner": "node:test"
     },
     "advisor-scopes.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 9,
+      "fail": 0,
+      "skipped": 0,
+      "runner": "node:test"
     },
     "advisor-session.test.mjs": {
       "pass": 6,
@@ -497,20 +501,20 @@
       "runner": "node:test"
     },
     "advisor-stage-integration.test.mjs": {
-      "pass": 0,
-      "fail": 11,
+      "pass": 11,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "advisor-stage-status.test.mjs": {
-      "pass": 0,
-      "fail": 1,
+      "pass": 1,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "advisor-stages.test.mjs": {
-      "pass": 0,
-      "fail": 14,
+      "pass": 14,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -521,8 +525,8 @@
       "runner": "node:test"
     },
     "advisor-switch.test.mjs": {
-      "pass": 0,
-      "fail": 2,
+      "pass": 2,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -539,14 +543,14 @@
       "runner": "node:test"
     },
     "advisor.test.mjs": {
-      "pass": 12,
-      "fail": 1,
+      "pass": 13,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "analyze-e001.test.mjs": {
-      "pass": 0,
-      "fail": 4,
+      "pass": 4,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -563,34 +567,38 @@
       "runner": "custom"
     },
     "audit-clarify.test.mjs": {
-      "pass": 5,
-      "fail": 5,
+      "pass": 10,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
     "bash-diagnostics.test.mjs": {
-      "pass": 10,
-      "fail": 6,
+      "pass": 16,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "bash-execute.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 5,
+      "fail": 0,
+      "skipped": 0,
+      "runner": "node:test"
     },
     "bash-governance-reliability.test.mjs": {
-      "pass": 10,
-      "fail": 9,
+      "pass": 19,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "bash-home.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 7,
+      "fail": 0,
+      "skipped": 1,
+      "runner": "node:test"
     },
     "bash-inflight.test.mjs": {
-      "pass": 0,
-      "fail": 1,
+      "pass": 1,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -601,18 +609,22 @@
       "runner": "node:test"
     },
     "bash-runtime-cache.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 4,
+      "fail": 0,
+      "skipped": 0,
+      "runner": "node:test"
     },
     "bash-tmp-fallback.test.mjs": {
-      "pass": 1,
-      "fail": 1,
+      "pass": 2,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "bash-toggle.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 4,
+      "fail": 0,
+      "skipped": 0,
+      "runner": "custom"
     },
     "bash-usage.test.mjs": {
       "pass": 5,
@@ -627,8 +639,8 @@
       "runner": "node:test"
     },
     "capability.test.mjs": {
-      "pass": 11,
-      "fail": 7,
+      "pass": 18,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -639,14 +651,14 @@
       "runner": "custom"
     },
     "check-docs.test.mjs": {
-      "pass": 0,
-      "fail": 19,
+      "pass": 19,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
     "check-install.test.mjs": {
-      "pass": 0,
-      "fail": 11,
+      "pass": 11,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -723,8 +735,8 @@
       "runner": "node:test"
     },
     "control-api.test.mjs": {
-      "pass": 6,
-      "fail": 11,
+      "pass": 17,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -747,8 +759,8 @@
       "runner": "custom"
     },
     "english-mode.test.mjs": {
-      "pass": 29,
-      "fail": 1,
+      "pass": 30,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -765,8 +777,10 @@
       "runner": "custom"
     },
     "eval-rehearsal.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 6,
+      "fail": 0,
+      "skipped": 0,
+      "runner": "custom"
     },
     "eval-run.test.mjs": {
       "pass": 18,
@@ -811,8 +825,8 @@
       "runner": "custom"
     },
     "host-migrate.test.mjs": {
-      "pass": 1,
-      "fail": 14,
+      "pass": 15,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -841,8 +855,8 @@
       "runner": "node:test"
     },
     "inference-context.test.mjs": {
-      "pass": 6,
-      "fail": 1,
+      "pass": 7,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -853,20 +867,20 @@
       "runner": "node:test"
     },
     "inference-evidence.test.mjs": {
-      "pass": 0,
-      "fail": 47,
-      "skipped": 0,
+      "pass": 46,
+      "fail": 0,
+      "skipped": 1,
       "runner": "node:test"
     },
     "inference-focus.test.mjs": {
-      "pass": 8,
-      "fail": 2,
+      "pass": 10,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
     "inference-profile.test.mjs": {
-      "pass": 7,
-      "fail": 1,
+      "pass": 8,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -895,8 +909,8 @@
       "runner": "custom"
     },
     "llm-lib.test.mjs": {
-      "pass": 5,
-      "fail": 7,
+      "pass": 12,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -925,8 +939,8 @@
       "runner": "custom"
     },
     "open-issues-31-32.test.mjs": {
-      "pass": 2,
-      "fail": 1,
+      "pass": 3,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -943,8 +957,8 @@
       "runner": "node:test"
     },
     "optimizer-protocol.test.mjs": {
-      "pass": 11,
-      "fail": 4,
+      "pass": 15,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -985,8 +999,8 @@
       "runner": "node:test"
     },
     "policy.test.mjs": {
-      "pass": 7,
-      "fail": 1,
+      "pass": 8,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -997,14 +1011,14 @@
       "runner": "custom"
     },
     "preflight-e001.test.mjs": {
-      "pass": 0,
-      "fail": 8,
+      "pass": 8,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
     "preset-dismissed-policy.test.mjs": {
-      "pass": 0,
-      "fail": 2,
+      "pass": 2,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -1045,8 +1059,8 @@
       "runner": "custom"
     },
     "quality-contribution.test.mjs": {
-      "pass": 8,
-      "fail": 1,
+      "pass": 9,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -1057,14 +1071,14 @@
       "runner": "custom"
     },
     "read-tools.test.mjs": {
-      "pass": 5,
-      "fail": 7,
+      "pass": 12,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
     "recap.test.mjs": {
-      "pass": 0,
-      "fail": 13,
+      "pass": 13,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -1081,14 +1095,14 @@
       "runner": "node:test"
     },
     "rollout.test.mjs": {
-      "pass": 10,
-      "fail": 1,
+      "pass": 11,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
     "scaffold-directions.test.mjs": {
-      "pass": 12,
-      "fail": 2,
+      "pass": 14,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -1105,8 +1119,8 @@
       "runner": "node:test"
     },
     "settings.test.mjs": {
-      "pass": 8,
-      "fail": 12,
+      "pass": 20,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -1123,8 +1137,8 @@
       "runner": "node:test"
     },
     "slash-review.test.mjs": {
-      "pass": 1,
-      "fail": 4,
+      "pass": 5,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -1141,8 +1155,8 @@
       "runner": "node:test"
     },
     "temp-sweep.test.mjs": {
-      "pass": 1,
-      "fail": 4,
+      "pass": 5,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
@@ -1159,8 +1173,8 @@
       "runner": "node:test"
     },
     "tool-continuation.test.mjs": {
-      "pass": 0,
-      "fail": 7,
+      "pass": 7,
+      "fail": 0,
       "skipped": 0,
       "runner": "node:test"
     },
@@ -1183,18 +1197,22 @@
       "runner": "node:test"
     },
     "verifier-html.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 3,
+      "fail": 0,
+      "skipped": 1,
+      "runner": "custom"
     },
     "verify-artifact.test.mjs": {
-      "pass": 1,
-      "fail": 9,
+      "pass": 10,
+      "fail": 0,
       "skipped": 0,
       "runner": "custom"
     },
     "wire.test.mjs": {
-      "error": "unparsable-output",
-      "exit": 1
+      "pass": 52,
+      "fail": 0,
+      "skipped": 0,
+      "runner": "custom"
     },
     "wish-check.test.mjs": {
       "pass": 4,
@@ -1210,14 +1228,14 @@
   "packaging": {
     "ok": false,
     "exit": 1,
-    "verdict": "ERROR: EPERM: operation not permitted, mkdir 'C:\\Users\\33875\\AppData\\Local\\Temp\\po06-install-drill'"
+    "verdict": "ERROR: Command failed: tar -xzf C:/Users/33875/.dsh/plugins/dsh-wish-specializer/.po06-tmp/po06-install-drill/dsh-external-dsh-wish-specializer-0.9.0-stable.tgz -C C:/Users/33875/.dsh/plugins/dsh-wish-specializer/.po06-tmp/po06-install-drill/extracted\ntar (child): Cannot connect to C: resolve failed\n\ngzip: stdin: unexpected end of file\ntar: Child returned status 128\ntar: Error is not recoverable: exiting now\n"
   },
   "docs": {
     "ok": true,
     "exit": 0,
     "output": [
       "文档漂移检查（状态类文档；EVIDENCE.md 作为历史日志**不在范围内**）",
-      "权威值：{\"suites\":146,\"pass\":1086,\"mutants\":234,\"sourceFiles\":42,\"libModules\":73}",
+      "权威值：{\"suites\":146,\"pass\":1498,\"sourceFiles\":null,\"libModules\":73}",
       "预算口径：S1 上界 105048 / 期望 35016；S2 上界 4591098 / 期望 1530366；S3 上界 105048 / 期望 35016；S4 上界 35016 / 期望 11672",
       "检查文件：4 份",
       "✅ 计数类数字：未发现过期",
@@ -1225,68 +1243,12 @@
       "ℹ 外部引用豁免 31 处（运行时配置 11 · 产物 16 · 包内 2 · 本机工具 2）——这些按定义不在仓里",
       "✅ 指向：文档里引用的仓内路径都存在",
       "✅ 门面：根 README 提到了当前 0.6 版本号",
-      "✅ 引文：全仓引用的 EV 编号都能在 EVIDENCE.md 里找到（扫过 526 个文件）"
+      "✅ 引文：全仓引用的 EV 编号都能在 EVIDENCE.md 里找到（扫过 618 个文件）"
     ]
   },
   "problems": [
-    "测试失败：advisor-claim-evidence.test.mjs → 13 失败",
-    "测试失败：advisor-contribution-memory.test.mjs → 2 失败",
-    "测试失败：advisor-coverage.test.mjs → 8 失败",
-    "测试失败：advisor-delivery.test.mjs → 2 失败",
-    "测试失败：advisor-feedback.test.mjs → 7 失败",
-    "测试失败：advisor-host-registration.test.mjs → 1 失败",
-    "测试失败：advisor-loop-integration.test.mjs → 13 失败",
-    "测试失败：advisor-materials.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：advisor-open-issue-30.test.mjs → 3 失败",
-    "测试失败：advisor-progress-delta.test.mjs → 7 失败",
-    "测试失败：advisor-progress.test.mjs → 2 失败",
-    "测试失败：advisor-scopes.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：advisor-stage-integration.test.mjs → 11 失败",
-    "测试失败：advisor-stage-status.test.mjs → 1 失败",
-    "测试失败：advisor-stages.test.mjs → 14 失败",
-    "测试失败：advisor-switch.test.mjs → 2 失败",
-    "测试失败：advisor.test.mjs → 1 失败",
-    "测试失败：analyze-e001.test.mjs → 4 失败：S4 的单元必须被认出来（不得被写死的分期静默丢掉）; 违反计数要对：合规 0、违规 ≥1（不能一律为真）; 认不出的题号要**明确警告**，不许静默跳过; 空目录 / 无匹配文件不崩，且不谎报",
-    "测试失败：audit-clarify.test.mjs → 5 失败：端到端：报表里高置信与低置信**同时**出现，且给出可复现的 JSON; 端到端：包里没有未决项却在问 ⇒ 出一条\"值得看一眼\"（不是结论）; 端到端：声明了\"要用户拍板\"却一次都没问 ⇒ 出一条\"值得看一眼\"; 端到端：有答案但没有对应意图包 ⇒ 如实记 packet-missing（不假装判断过）; 什么都没读到 ⇒ 退出码 2（\"无从审计\" ≠ \"审计通过\"）",
-    "测试失败：bash-diagnostics.test.mjs → 6 失败",
-    "测试失败：bash-execute.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：bash-governance-reliability.test.mjs → 9 失败",
-    "测试失败：bash-home.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：bash-inflight.test.mjs → 1 失败",
-    "测试失败：bash-runtime-cache.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：bash-tmp-fallback.test.mjs → 1 失败",
-    "测试失败：bash-toggle.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：capability.test.mjs → 7 失败：执行：ls / cat / head / tail / wc / find / grep 都按 POSIX 语义给结果; 回归：wc -c 走元数据（大文件也给字节数）、读不了的文件必须说清原因; 执行：管道按行过滤、&& 串联按顺序; 只读纪律：写类命令、重定向、命令替换、变量展开一律**显式拒绝**; 安全：越界路径一律拒绝（与 read-tools 同一条纪律）; 经工具循环调用：`run` 工具可用，缺参数如实拒绝; 虚拟 POSIX 注册成工作 AI 的工具：名字/参数/终端卡片/只读拒绝都到位",
-    "测试失败：check-docs.test.mjs → 19 失败：全绿 fixture：四条检查都 ✅ 且退出码 0; 计数过期（文档写 99、产物 100）⇒ 报红并点名文件; 括注型局部叙述不误报（EV-0001（23 项））; 括注里的带单位计数**必须**查（回归：同一括注一半被查一半不查）; 括注里的裸计数仍然不报（假警报守卫）; lib 模块数过期 ⇒ 报红（锚在 lib/ 上，不受 n≥20 下限保护）; lib 模块数正确 ⇒ 绿；不传 --lib-modules 时跳过（不猜）; 预算数字与 plan-E001.json 不符 ⇒ 报红; **新追加的分期也要被检查**（回归：分期清单曾写死 S1–S3，S4 静默漏检）; 预算数字正确 ⇒ 绿；「全量」语境的数字跳过; 「N 个源文件」过期 ⇒ 报红（这个数字此前完全没人查）; 指向不存在的文件 ⇒ 报红并写出路径; 指向三类**不该报**的形态：存在的裸文件名 / 运行时配置名 / .tgz 构建产物; 外部引用（Release 附件 / tgz 内路径 / 本机工具 / 宿主配置）不报红，且豁免看得见; 豁免不吞真问题：形近的假仓内路径仍然报红; 根 README 没有当前 0.6 版本号 ⇒ 报门面问题; 不带 --strict 时只提示，退出码 0; 引文检查：引用不存在的 EV 编号 ⇒ 报红；引用存在的 ⇒ 绿; 引文检查：`### EV-0001 补充` 是延伸，**不算重复定义**",
-    "测试失败：check-install.test.mjs → 11 失败：全绿：报\"可以开始试了\"、退出码 0、逐文件比对无差异; 缺 cordis.patch.yml ⇒ 阻断（装了也不会被装配）; 装出来的包不存在 ⇒ 阻断; 冷启动：没装时三、四节明说\"跳过\"，且不得出现 Cannot find module 噪声; 冷启动：结论里给出**能照抄的装法**（不必让用户去翻文档）; 装了但不在 `dsh.profile.bundles` 里 ⇒ 阻断（装了却永远不会被装配）; 跑不了 `dsh --dump-config` ⇒ 阻断（不把\"没验证\"当\"通过\"）; 装的版本与期望不符 ⇒ 阻断; 有 lib 文件与仓库不同 ⇒ 警告并点名（不阻断）; 未启用 ⇒ 警告里给出开启办法（含 settingsVersion 标记）; --json 输出结构化结论",
-    "测试失败：control-api.test.mjs → 11 失败：resolveHelp：只取用户可见区间、剥掉〔依据〕、缺文件/缺标记都如实上报; resolvePrompt / writePrompt：文件优先、可重置、写后读回一致; handler：非 loopback Host / 缺写头 ⇒ 403，且**不落任何副作用**; handler：GET /status 与 GET /prompt、GET /turns; handler：GET /state 需要 session，且只读该会话的状态文件; handler：POST /settings 真写盘（原子+备份），非法值回落并上报; handler：设置写盘后要通知宿主（onSettingsWritten）——关档必须触发\"清包\"这条路; handler：POST /prompt 写覆盖；POST /rollback disable 生效、其余如实 501; handler：POST /rollback kind=packet —— 接上 hook 即生效；无历史如实 400; handler：POST /interpret —— 成功回包；无 hook 如实 501；hook 抛错由 handler 兜住; handler：超大 body 被拒（不许被打爆）",
-    "测试失败：english-mode.test.mjs → 1 失败",
-    "测试失败：eval-rehearsal.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：host-migrate.test.mjs → 14 失败：探测：profile 干净 → 不判定为在装; 探测：dependencies 含旧包 → 判定在装（含证据）; 探测：bundle 列表含旧包 → 判定在装; 探测：模块目录存在 → 判定在装（保守方向）; 默认 dry-run：**绝不写配置**（逐字节比对）; 无配置 → 如实说按全新安装处理，不算失败; 非 dry-run：缺选择 → 中止且**不写任何东西**（无备份也无改动）; 非 dry-run：给齐选择 → 备份 + 写回；旧字段**保留但不再被解释**; 回滚：从备份还原，逐字节一致，且备份保留; 回滚：无备份 → 如实失败，不动配置; 损坏的配置：不抛错、不写文件，如实报告; 写配置是**原子**的：不留 .tmp- 残留，备份与原文逐字节相同; 回滚也是**原子**的：写回后能解析，且不留 .tmp- 残留; 默认 dry-run：一个字节都不写，也不产生备份",
-    "测试失败：inference-context.test.mjs → 1 失败",
-    "测试失败：inference-evidence.test.mjs → 47 失败",
-    "测试失败：inference-focus.test.mjs → 2 失败",
-    "测试失败：inference-profile.test.mjs → 1 失败",
-    "测试失败：llm-lib.test.mjs → 7 失败：宿主入口解析：从假安装树的入口找到它自己的 node_modules 里的包; 假安装树里**没有**这个包 ⇒ 如实失败，并带上试过什么; 环境覆盖优先于宿主入口；文件不存在时**回落到**宿主入口并留下 not-found; 覆盖写成**包名**时按宿主基准解析；没有基准则如实报 no-base-to-resolve; loadLlmLib：解析成功则真的 import 到模块（含构造函数）; loadLlmLib：模块存在但加载抛错 ⇒ 原因是 import-failed，而不是\"没找到\"; requireLlmLib：拿得到返回模块；拿不到**抛**且错误里带试过的位置",
-    "测试失败：open-issues-31-32.test.mjs → 1 失败",
-    "测试失败：optimizer-protocol.test.mjs → 4 失败",
-    "测试失败：policy.test.mjs → 1 失败：readPolicy：缺文件/坏 JSON/字段乱写 ⇒ 一律默认政策（绝不抛、绝不放宽）",
-    "测试失败：preflight-e001.test.mjs → 8 失败：S4 预检：封存可验（含负向自检）、2/2 题适用「约束守住」、退出码 0; S1 预检：明说\"这一期测不到「约束守住」\"并以退出码 2 拦住; 未知分期 ⇒ UNKNOWN-STAGE，不静默退回全部; 预算低于上界 ⇒ 拦住；给足上界 ⇒ 放行; 包缓存：带指纹的题报命中，未缓存的报\"仍需编译\"; 包目录里有缓存但**一个都不匹配本期题号** ⇒ 明确警告（别把\"有缓存\"读成\"不花钱\"）; --json 输出结构化结果（判据适用数 / 预算判定 / 缓存清单）; 包缓存：带指纹的算命中；无指纹的旧文件不计入省钱，但要被点名",
-    "测试失败：preset-dismissed-policy.test.mjs → 2 失败",
-    "测试失败：quality-contribution.test.mjs → 1 失败",
-    "测试失败：read-tools.test.mjs → 7 失败：只读边界：越界路径与未知工具都被明确拒绝; 工具循环真的跑了一轮、真的执行了工具（不是 0 轮就抛）; 取消信号传到宿主流的参数里（不是只在注释里存在）; tool prose is rejected by the production parser without a tool-free retry; tool JSON produces v3 directions with complete tool usage accounting; mixed output recovers the complete v3 object with a visible warning in the same run; malformed mixed objects still fail the production parser without retry and retain usage",
-    "测试失败：recap.test.mjs → 13 失败：条目按出处分流：你说过 / 机器补充 / 无出处; 无出处条目 ⇒ 非零退出 + 明确警告（不许只是小声提一句）; 台账里有坏行 ⇒ 警告且非零退出（不静默吞掉）; 分叉继承记录单独成节，不计入逐轮统计（回归：曾把包字符均值拉低）; 没跑过（两个文件都不存在）⇒ 给说明，退出码 0; --json 输出结构化结果（会话/条目/问题计数）; 跨会话串味：条目引用了链外会话的话 ⇒ 报红 + 非零退出; 继承的条目指向**父会话**不算串味（假警报守卫）; 自引用（出处指向自己）不算串味; 状态文件读不出来 ⇒ 单独成节 + 非零退出（不许读成\"本来就没约束\"）; 没台账：home 里没装 0.6 ⇒ 明说\"没装\"并指向装法; 没台账：装了 + 配置启用 ⇒ 明说\"还没被触发过\"，不许说成装错了地方; 没台账：装了但启用没生效 ⇒ 指出配置原因（保守默认不启用）",
-    "测试失败：rollout.test.mjs → 1 失败：演练：备份 → 迁移 → 校验 → 回滚，且原文件字节还原",
-    "测试失败：scaffold-directions.test.mjs → 2 失败",
-    "测试失败：settings.test.mjs → 12 失败：writeSettings：写入成功、备份可解析、读回一致、别人的字段原样保留; 下一次保存删除全局和会话旧 framing，重复保存与旧补丁都不能复活它; writeSettings：文件不存在 ⇒ 直接创建（不报\"备份失败\"）; writeSettings：坏 JSON ⇒ 原文备份 + 从备份捞回\"启用意图\"字段（真机数据丢失事故的修复）; writeSettings：带 BOM 的配置**必须照常读**（不许当成空配置重写，更不许丢启用字段）; 写档位 ⇒ 自动补 enabled:true / rollout:all（全新安装的\"面板拨档位\"路径）; 档位=\"关闭\" ⇒ 显式写 enabled:false + rollout:{mode:off}（理由码是用户的选择）; 灰度名单不许被档位写入动到（只补 enabled，名单原样）; 改非档位项（模型/权限/上下文/bash）不碰启用意图; 按会话拨档位（bySession）⇒ 同样补 enabled:true / rollout:all（issue #27）; 按会话设为\"关闭\" ⇒ **不许**关掉整个插件（只开不关）; 按会话只改英文模式等非档位项 ⇒ 不碰启用意图",
-    "测试失败：slash-review.test.mjs → 4 失败",
-    "测试失败：temp-sweep.test.mjs → 4 失败：只清\"够旧\"的：新目录一定留下（绝不碰正在跑的测试）; 前缀白名单：**别人的临时目录一个都不许碰**; 删除失败要**如实报出来**，不许当成清干净了; 阈值可注入（便于测试与调参），默认 10 分钟",
-    "测试失败：tool-continuation.test.mjs → 7 失败",
-    "测试失败：verifier-html.test.mjs → 输出无法解析（exit=1）",
-    "测试失败：verify-artifact.test.mjs → 9 失败：基线：包与 tag 逐字节一致、版本四处一致、登记哈希相符 ⇒ PASS / exit 0; 包里某个文件内容被改 ⇒ FAIL 且点名该文件; 夹带未声明文件（test/secret.test.mjs）⇒ FAIL，且报\"多出来的\"; 声明了但包里缺失文件（lib/wire.js）⇒ FAIL，且报\"少了的\"; tag 名与包内 version 不一致 ⇒ FAIL; tgz 文件名与包内 name+version 不符 ⇒ FAIL，并给出应有的文件名; checklist 登记的 sha256 与实测不符 ⇒ FAIL（缩写形式同样要比）; checklist 没登记 sha256 ⇒ 不因此判失败，但记录 kind=none; tag 解析不到 ⇒ FAIL（不许把\"无从核对\"当成通过）",
-    "测试失败：wire.test.mjs → 输出无法解析（exit=1）",
     "变异检验输出无法解析（exit=1）",
-    "打包产物自足性演练未通过：ERROR: EPERM: operation not permitted, mkdir 'C:\\Users\\33875\\AppData\\Local\\Temp\\po06-install-drill'"
+    "打包产物自足性演练未通过：ERROR: Command failed: tar -xzf C:/Users/33875/.dsh/plugins/dsh-wish-specializer/.po06-tmp/po06-install-drill/dsh-external-dsh-wish-specializer-0.9.0-stable.tgz"
   ],
   "notes": [
     "lib/interpreter.js 没有可识别的版本常量（审计时需要知道用的是哪一版契约）",

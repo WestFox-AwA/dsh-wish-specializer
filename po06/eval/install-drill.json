@@ -1,9 +1,9 @@
 {
   "probe": "po06-install-drill",
   "phase": "P8",
-  "at": "2026-10-25T17:06:44.407Z",
+  "at": "2026-10-25T17:44:30.549Z",
   "steps": {},
   "ok": false,
-  "error": "Error: EPERM: operation not permitted, mkdir 'C:\\Users\\33875\\AppData\\Local\\Temp\\po06-install-drill'\n    at mkdirSync (node:fs:1410:26)\n    at file:///C:/Users/33875/.dsh/plugins/dsh-wish-specializer/po06/scripts/install-drill.mjs:63:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)\n    at async node:internal/modules/esm/loader:647:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)",
-  "verdict": "ERROR: EPERM: operation not permitted, mkdir 'C:\\Users\\33875\\AppData\\Local\\Temp\\po06-install-drill'"
+  "error": "Error: Command failed: npm pack --pack-destination C:\\Users\\33875\\.dsh\\plugins\\dsh-wish-specializer\\.po06-tmp\\po06-install-drill --silent\n    at genericNodeError (node:internal/errors:986:15)\n    at wrappedFn (node:internal/errors:540:14)\n    at checkExecSyncError (node:child_process:942:11)\n    at execFileSync (node:child_process:978:15)\n    at file:///C:/Users/33875/.dsh/plugins/dsh-wish-specializer/po06/scripts/install-drill.mjs:65:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)\n    at async node:internal/modules/esm/loader:647:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)",
+  "verdict": "ERROR: Command failed: npm pack --pack-destination C:\\Users\\33875\\.dsh\\plugins\\dsh-wish-specializer\\.po06-tmp\\po06-install-drill --silent"
 }

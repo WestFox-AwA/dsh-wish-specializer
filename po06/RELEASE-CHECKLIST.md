@@ -1,5 +1,26 @@
 # 0.6 发布检查表（RELEASE-CHECKLIST）
 
+## 0.9.0-stable 发布登记（2026-10-26）
+
+> 本版已发布：提交与 tag 已推送，Release 已建，两个附件已上传且非空；GitHub 自算 digest 与本地一致。
+
+| 项 | 值 |
+|---|---|
+| 包名 | `@dsh-external/dsh-wish-specializer` |
+| 版本 | `0.9.0-stable`（真源 `po06/package.json`；根 `package.json` 薄壳已同步） |
+| 本版主题 | 优化选项定稿为单屏「档位旋钮」；模型状态「极限」更名「超频」；0.9.0-beta-1 之后的注入 / 包 / 顾问 / 上下文 / 脚手架整理 |
+| 提交 / tag | `567290518379afa5634c56caabdf274c8b4bc82a` / `v0.9.0-stable`（annotated `982a977`） |
+| 推送 | `d0dc8b4..5672905 HEAD -> main`；`[new tag] v0.9.0-stable`（经本机代理 `127.0.0.1:7890`，`http.sslBackend=openssl`） |
+| Release | id `423553768` · <https://github.com/WestFox-AwA/dsh-wish-specializer/releases/tag/v0.9.0-stable>（`prerelease=false`） |
+| 本地产物 | `dsh-external-dsh-wish-specializer-0.9.0-stable.tgz`（**21,475,033 B、254 个成员、74 个 lib 模块**）｜ sha256 `50e98da59574f334cae3f967116fbfa2c753a66c0195e82e41c70aa177875b8f`；校验和文件 `SHA256SUMS-0.9.0-stable.txt`（116 B，`84c7f0c3…f735`）。都在 `.po06-tmp/release/`（仓库内不放 tgz） |
+| 产物核对（本机实测） | `verify-artifact.mjs --tag v0.9.0-stable --tgz … --repo .` → **PASS**：成员 254（lib 74）｜多 0 ｜少 0 ｜声明缺 0；逐字节比对 254 个、**不同 0**；包内版本、tag、文件名三者一致 |
+| 远程复核 | `releases/latest` → `v0.9.0-stable`、`prerelease=false`；两个附件在且非空；**GitHub 自算 digest `sha256:50e98da5…b8f` 与本地一致**，size 21475033 一致；`SHA256SUMS` 附件 digest `sha256:84c7f0c3…f735` |
+| 全量测试 | `run-suites.mjs`：**146 套 / 146 通过 / 0 失败 / 1498 项断言** |
+| 文档门 | `check-docs.mjs`：计数、预算、路径、引文四项全绿 |
+| 发版门（如实登记，**未全绿**） | `check-release.mjs` → **FAIL（2 项阻断）**：① **变异检验输出无法解析**（`test/mutate-check.cjs` 的 baseline 对 `test/pipeline.test.mjs` 拿不到汇总行；该套件单独跑 15/15 通过 ⇒ 是解析器与当前 Node 报告格式不匹配，不是测试变红）② **打包自足性演练**：演练内 `npm pack` 受本机沙箱限制（默认往 `%LOCALAPPDATA%` 写缓存被拒）挂住。两项都已就地修脚本（`install-drill.mjs`：`--force-local` + npm 缓存/离线 env 指向演练目录），**但本机未复跑**，故不写成 PASS |
+| 未完成项 | ① 发版门仍未全绿（见上，属本机环境与解析器问题）② 附件的「完整重下后逐字节相同」未做（本机经代理，大文件未拉完），替代证据是 GitHub 自算 digest 与本地一致 ③ 未在真实 GUI 里用这份 tgz 跑一轮（运行侧走 link 装配，与附件无关） |
+| 踩到的坑（记下来） | 打包前 `po06/runtime/d/…html/…` 里躺着 27 个未跟踪的开发残留（截图、`.npmcache`、临时日志），会让 tgz 多出 26 个成员并使 `verify-artifact` 判 FAIL —— 已删除；这类残留不会进 git，只会在**打包时**冒出来 |
+
 ## 0.8.4-stable 发布登记（准备中 · 2026-10-16 · 六条线上 issue）
 
 > ✅ **本版已发布**（2026-10-16）：提交与 tag 已推送，Release 已建，两个附件均已上传且非空。

@@ -62,7 +62,16 @@ try {
   rmSync(DRILL, { recursive: true, force: true })
   mkdirSync(DRILL, { recursive: true })
   // 在隔离目录里 pack（把 tgz 放在隔离目录，避免污染仓库）
-  execFileSync('npm', ['pack', '--pack-destination', DRILL, '--silent'], { cwd: ROOT, stdio: 'pipe', shell: true })
+  // 沙箱/CI 里 npm 默认会往 ~/.npm 与 %LOCALAPPDATA% 写缓存与日志，被拒时不是"包坏了"，
+  // 而是"npm 没地方写"；另外离线机器上 npm 可能去问 registry 而挂住。两项都就地兜住。
+  const npmEnv = { ...process.env,
+    npm_config_cache: join(DRILL, '.npm-cache'),
+    npm_config_tmp: DRILL,
+    npm_config_offline: 'true',
+    npm_config_audit: 'false',
+    npm_config_fund: 'false',
+    npm_config_update_notifier: 'false' }
+  execFileSync('npm', ['pack', '--pack-destination', DRILL, '--silent'], { cwd: ROOT, stdio: 'pipe', shell: true, env: npmEnv })
   const tgzName = readdirSync(DRILL).find((n) => n.endsWith('.tgz'))
   if (!tgzName) throw new Error('npm pack 没有产出 tgz')
   const tgzPath = join(DRILL, tgzName)
@@ -72,7 +81,12 @@ try {
   // ── 2. 解包到隔离目录 ──────────────────────────────────────────────
   const ext = join(DRILL, 'extracted')
   mkdirSync(ext, { recursive: true })
-  execFileSync('tar', ['-xzf', tgzPath, '-C', ext], { stdio: 'pipe' })
+  // ⚠ Windows 上不能把 `C:\...` 直接交给 GNU tar：它会把 `C:` 当远端主机
+  //   （"tar (child): Cannot connect to C: resolve failed"）。统一换成 / 分隔。
+  const posix = (q) => (process.platform === 'win32' ? String(q).split(String.fromCharCode(92)).join('/') : String(q))
+  // --force-local：GNU tar 会把 `C:` 当远端主机，即使换成 / 也一样，必须显式关掉
+  const tarArgs = (process.platform === 'win32' ? ['--force-local'] : []).concat(['-xzf', posix(tgzPath), '-C', posix(ext)])
+  execFileSync('tar', tarArgs, { stdio: 'pipe' })
   const pkgDir = join(ext, 'package')
   const files = walk(pkgDir)
   report.steps.content = { count: files.length, files }
