@@ -1953,7 +1953,10 @@ class DshAdapter {
                 // 继续被注入到每一轮装配里 —— 两条成因（缓存没清 / 门禁漏判）**都成立**，两条都要修。
                 // 这里是硬短路：读到"不注入"就连缓存都不看。
                 const pol = adapter.policyNow ? adapter.policyNow(sid) : null
-                if (pol && pol.injectPacket !== true) return ''
+                // 模型状态（超频）与优化强度**互相独立**：关掉档位只该停掉优化包，
+                // 不该顺带把"超频"那段也吞掉（用户 2026-10-26 报的真机现象）。
+                const modelStateText = adapter.getModelStateText(sid)
+                if (pol && pol.injectPacket !== true) return modelStateText
                 // 子代理默认不注入（2026-10-19）：它们的任务是父代理派下来的，再叠一层优化通常只是白花 token。
                 if (isSubagentSession(session) && pol && pol.applyToSubagents !== true) return ''
                 // 预设提示（2026-10-19）：只在 Wish / PTC 上效果最好；别的预设就记一条，客户端弹一次。
@@ -1969,7 +1972,7 @@ class DshAdapter {
                 this.capability.seed(session)
                 const taskContext=this.capability.taskContext(session)
                 const feedback = this.reviewFeedback ? this.reviewFeedback(agent, pol, { root: sessionHistory.getCwd(sid), taskContext }) : ''
-                return [withAdvisorWorkflow(this.getWorkingText(sid, adapter.lastRealUserMessageBySession.get(sid)), pol, this.getAdvisorText(sid, feedback)), adapter.getModelStateText(sid)].filter(Boolean).join(String.fromCharCode(10,10))
+                return [withAdvisorWorkflow(this.getWorkingText(sid, adapter.lastRealUserMessageBySession.get(sid)), pol, this.getAdvisorText(sid, feedback)), modelStateText].filter(Boolean).join(String.fromCharCode(10,10))
               } catch (e) {
                 // ⚠ **不得静默**（EV-0102）：这条路径若抛错，意图包会在**毫无痕迹**的情况下消失——
                 // 正是 EV-0078 那一类事故（产品安静地不做事，用户以为它开着）。

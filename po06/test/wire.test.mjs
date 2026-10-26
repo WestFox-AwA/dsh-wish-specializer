@@ -1186,6 +1186,15 @@ await ta('模型状态：极限才注入身份与充足算力指令，正常不�
   ok(text.includes('火力全开'), '要鼓励拉满')
 })
 
+await ta('模型状态与优化档位互相独立：关闭档仍注入超频指令', async () => {
+  const off = await wireHost({ sid: 'wire-state-off-extreme', policy: { advisor: false, tier: 'off', modelState: 'extreme' } })
+  const text = off.context()
+  ok(text.includes('你的用量是unlimited的'), '关闭优化强度时也必须注入超频指令')
+  ok(!text.includes('制作建议'), '关闭档不得注入优化包正文')
+  const offNormal = await wireHost({ sid: 'wire-state-off-normal', policy: { advisor: false, tier: 'off', modelState: 'normal' } })
+  ok(!offNormal.context().includes('模型状态'), '关闭档 + 正常档不得注入任何模型状态指令')
+})
+
 await ta('status 的会话生效值必须带上模型状态，面板才能显示上次选择', async () => {
   const h = await wireHost({ sid: 'wire-state-status', policy: { advisor: false } })
   const saved = await h.ctx.post('/settings', { sessionId: h.session.id, bySession: { [h.session.id]: { modelState: 'extreme' } } })
