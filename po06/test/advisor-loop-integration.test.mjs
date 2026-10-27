@@ -24,6 +24,9 @@ test('first observer receives no source/self-evaluation; useful second phase see
  assert.equal(first.messages[0].content[0].text.includes('TOP SECRET IMPLEMENTATION FACT'),false)
  assert.ok(second.messages[0].content[0].text.includes('TOP SECRET IMPLEMENTATION FACT'))
  assert.equal(first.messages[0].content.filter(x=>x.type==='image').length,1);assert.equal(out.usage.totalTokens,12);assert.equal(second.count,2)
+ // 回归（2026-10-26）：顾问的工具循环必须带上会话标识，否则 opencode 系网关 400 MissingSessionID
+ assert.equal(second.sessionId,'loop-s','工具循环必须收到本会话 id')
+ assert.equal(first.sessionId,'loop-s','直连那一轮也必须带会话 id')
  assert.equal(out.completionClaimAllowed,false)
  }finally{rmSync(root,{recursive:true,force:true})}
 })
