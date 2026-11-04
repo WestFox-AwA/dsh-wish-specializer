@@ -20,6 +20,9 @@
     "./client": {
       "default": "./lib/client.js"
     },
+    "./check": {
+      "default": "./lib/wish-check.js"
+    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
