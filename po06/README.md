@@ -1,4 +1,4 @@
-# 许愿特化器 · Wish Specializer（包名 dsh-wish-specializer，**0.9.0-stable**；最新发布 0.9.0-stable）
+# 许愿特化器 · Wish Specializer（包名 dsh-wish-specializer，**0.9.1**；最新发布 0.9.1）
 
 当前选项包括档位、权限、英文模式、模型与思考档位、上下文、只读工具、顾问及双击回车。现行运行与提交规则见 [优化生产管线](../docs/OPTIMIZATION-PIPELINE.md)。下列旧版记录和跑分按当时版本解读；历史基调试验与时延测量不代表当前功能或性能，原始证据不改写。
 
@@ -48,8 +48,8 @@
 
 > 💬 中文用户交流：**QQ 群 1121399051**（最新消息、安装帮助、版本公告）。
 
-`@dsh-external/dsh-wish-specializer` · **0.9.0-stable** · GitHub Release（**未发 npm**：`private: true`，只发附件）
-→ 下载：<https://github.com/WestFox-AwA/dsh-wish-specializer/releases/tag/v0.9.0-stable>（附件含 `tgz` 与 `SHA256SUMS`）
+`@dsh-external/dsh-wish-specializer` · **0.9.1** · GitHub Release（**未发 npm**：`private: true`，只发附件）
+→ 下载：<https://github.com/WestFox-AwA/dsh-wish-specializer/releases/tag/v0.9.1>（附件含 `tgz` 与 `SHA256SUMS`）
 
 > **0.7.8（历史版本）的一句话**：**档位终于真的分开了**——补充程度（700 / 1200 / 2000 字）与自主预算
 > （1 / 2 / 3 个问题）两个维度逐级递进；此前 `minimal` 从未被任何档位使用、且 standard 与 heavy 的
@@ -129,8 +129,8 @@
 **① 从 Release 下载安装包**（两个附件：`tgz` + 校验和）：
 
 ```powershell
-# 直链（版本号换成你要的；0.9.0-stable 是最新版）
-$v = '0.9.0-stable'
+# 直链（版本号换成你要的；0.9.1 是最新版）
+$v = '0.9.1'
 $dir = "$env:USERPROFILE\Downloads"
 Invoke-WebRequest "https://github.com/WestFox-AwA/dsh-wish-specializer/releases/download/v$v/dsh-external-dsh-wish-specializer-$v.tgz" -OutFile "$dir\dsh-external-dsh-wish-specializer-$v.tgz"
 Invoke-WebRequest "https://github.com/WestFox-AwA/dsh-wish-specializer/releases/download/v$v/SHA256SUMS-$v.txt" -OutFile "$dir\SHA256SUMS-$v.txt"
@@ -157,14 +157,14 @@ Get-Content "$dir\SHA256SUMS-$v.txt"
 # 用发行版自带的 web 模板新建 profile（不含 0.5.x）
 dsh --profile po061 --from-default-profile web --dump-config
 # 装本包（tgz 路径换成你下载到的位置）
-dsh plugin --profile po061 add "$env:USERPROFILE\Downloads\dsh-external-dsh-wish-specializer-0.9.0-stable.tgz"
+dsh plugin --profile po061 add "$env:USERPROFILE\Downloads\dsh-external-dsh-wish-specializer-0.9.1.tgz"
 ```
 
 **③（可选，但强烈建议）一条命令自检**：装好了、装的是这一份、会被装配"（**不调模型、不花钱**）：
 
 ```powershell
 # 需要仓库里的脚本；没克隆仓库就跳过这步，直接进 ④
-node <repo>\po06\scripts\check-install.mjs --profile po061 --expect-version 0.9.0-stable
+node <repo>\po06\scripts\check-install.mjs --profile po061 --expect-version 0.9.1
 ```
 
 它会逐条回答：

@@ -7,7 +7,7 @@
 // 本模块只做三件事：记账、去重、把未结项渲染成"上一轮欠的账"喂回去。
 // 它不判断对错，也不自动销账——销账必须由顾问显式给出 resolved。
 
-const MAX_OPEN = 20
+const MAX_OPEN = 8
 
 /** 一条结论的规范化形式。 */
 function normalize(row, { turn = 0 } = {}) {
@@ -101,7 +101,22 @@ export function createLedger() {
       const rows = this.open(sessionId)
       if (!rows.length) return ''
       const head = english ? '[Open items from your previous reviews]' : '【你上次留下的未结结论】'
-      const lines = rows.slice(0, MAX_OPEN).map((r) => '- [' + r.id + '] ' + r.claim)
+      // 去重（同一句话反复出现只会让回答自我复读）+ 限流（issue #46）
+      const seen = new Set()
+      const uniq = rows.filter((r) => {
+        const key = String(r.claim || '').replace(/\s+/g, ' ').trim().slice(0, 160)
+        if (!key || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      const kept = uniq.slice(0, MAX_OPEN)
+      const lines = kept.map((r) => '- [' + r.id + '] ' + r.claim)
+      const overflow = uniq.length - kept.length
+      if (overflow > 0) {
+        lines.push(english
+          ? '- (' + overflow + ' more earlier items omitted; ask again if that context matters.)'
+          : '- （另有 ' + overflow + ' 条更早的未结结论未列入；需要时再查。）')
+      }
       return head + '\n' + lines.join('\n')
     },
   }

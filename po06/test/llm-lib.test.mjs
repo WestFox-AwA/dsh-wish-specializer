@@ -9,6 +9,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
 import {
   LLM_PKG, OVERRIDE_ENV, toImportSpec, llmLibCandidates, resolveLlmLib, loadLlmLib, requireLlmLib,
 } from '../lib/llm-lib.js'
@@ -75,6 +76,43 @@ t('候选顺序：环境覆盖在前、宿主入口在后；两者都没有 ⇒ 
   eq(both[0].source, 'env:' + OVERRIDE_ENV, '环境覆盖必须**排第一**（用户显式指定优先级最高）')
   eq(both[1].source, 'host-entry', '宿主入口第二')
   eq(both[1].base, hostEntry, '基准就是宿主入口本身')
+})
+
+t('issue #43：软链入口要按 realpath 再试一次，另补运行时前缀与插件自身两条基准', () => {
+  const link = join(process.cwd(), 'global', 'bin', 'dsh')
+  const real = join(process.cwd(), 'global', 'lib', 'bin.js')
+  const withReal = llmLibCandidates({ argv1: link, argv1Real: real })
+  eq(withReal.map((c) => c.source), ['host-entry', 'host-entry-real'], '软链入口后面必须跟上真身')
+  eq(withReal[1].base, real, '真身作为基准（npm 全局安装的 `<dsh>/lib/bin.js`）')
+  const same = llmLibCandidates({ argv1: real, argv1Real: real })
+  eq(same.map((c) => c.source), ['host-entry'], '真身与入口相同就不重复')
+  const withRuntime = llmLibCandidates({ execPath: join(process.cwd(), 'node', 'bin', 'node.exe') })
+  ok(withRuntime.some((c) => c.source === 'runtime-prefix'), '要补 node 运行时前缀候选（<prefix>/lib/node_modules）')
+  const withSelf = llmLibCandidates({ selfUrl: pathToFileURL(join(process.cwd(), 'po06', 'lib', 'llm-lib.js')).href })
+  ok(withSelf.some((c) => c.source === 'plugin-self'), '要补插件自身模块树这条基准')
+})
+
+t('issue #43：软链形态下真的能解析到包（假安装树 + realpath 注入）', () => {
+  const root = mkdtempSync(join(tmpdir(), 'po06-llm43-'))
+  try {
+    const pkgDir = join(root, 'dsh', 'node_modules', '@deepseek-ai', 'dsh-llm')
+    mkdirSync(pkgDir, { recursive: true })
+    writeFileSync(join(pkgDir, 'index.js'), 'export const x = 1')
+    writeFileSync(join(pkgDir, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-llm', version: '0.0.0', main: 'index.js' }))
+    const entry = join(root, 'dsh', 'lib', 'bin.js')
+    mkdirSync(dirname(entry), { recursive: true })
+    writeFileSync(entry, '')
+    const link = join(root, 'global-bin', 'dsh')
+    const r = resolveLlmLib({
+      argv1: link,
+      realpathOf: () => entry,
+      resolveSpec: (base, spec) => createRequire(base).resolve(spec),
+      execPath: '',
+      selfUrl: '',
+    })
+    ok(r.ok, '必须解析成功：' + JSON.stringify(r.tried))
+    eq(r.source, 'host-entry-real', '命中的应是 realpath 那条候选')
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
 t('相对入口要按 cwd 补全；没有 cwd 就**不给**这个候选（宁缺勿猜）', () => {

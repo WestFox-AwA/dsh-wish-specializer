@@ -52,7 +52,10 @@ test('real repeated improve invocation carries observed previous material, not j
  let seen,calls=0;const invoke=createAdvisor({resolveRuntime:async()=>({ok:true,readTools:false,cfg:{provider:'p',model:'m'},llm:{stream:o=>{calls++;seen=JSON.parse(o.messages[0].content[0].text);return stream({verdict:'suggestion',summary:'A specific optional gain.',contribution:'Use this concrete change and compare.',assumptions:[],findings:[{text:'The actual current material',evidenceRefs:seen.comparisonContext?['R0','P0']:['R0']}],checks:[],nextStep:'Compare actual results.',stopCondition:'Keep if no gain.'})}}})})
  const a=await invoke({mode:'improve_result',question:'Improve current',currentResult:'Actual original result.'},exec);assert.equal(a.contributionRecord.baselineSaved,true)
  const b=await invoke({mode:'improve_result',question:'Improve current',currentResult:'Actually changed result.'},exec)
- assert.equal(calls,2);assert.equal(seen.comparisonContext.before[0].text,'Actual original result.');assert.equal(b.comparison.benefitVerified,false);assert.equal(b.reviewPassed,false)
+ assert.equal(calls,2)
+ // issue #46：上一轮的**正文**不再入库，只保留「哪一版」（sha256）与未保留标记
+ assert.equal(seen.comparisonContext.before[0].text,undefined);assert.equal(seen.comparisonContext.before[0].textRetained,false);assert.ok(seen.comparisonContext.before[0].sha256)
+ assert.equal(b.comparison.benefitVerified,false);assert.equal(b.reviewPassed,false)
 })
 test('trusted actual control route validates exact turn identity and does not accept remote origins',async()=>{
  let seen;const handler=createControlHandler({advisorDelivery:async(sid,seq)=>{seen={sid,seq};return{ok:true,sessionId:sid,seq,status:'verification-pending',scopeOnly:true,completionClaimAllowed:false}}})

@@ -1,6 +1,6 @@
 # Wish Specializer
 
-**v0.9.0-stable** · DSH Web plugin · package `@dsh-external/dsh-wish-specializer`
+**v0.9.1** · DSH Web plugin · package `@dsh-external/dsh-wish-specializer`
 
 [中文](README.md) ｜ **English**
 
@@ -83,7 +83,7 @@ Tiers widen "how much / how many questions", **never your decision rights**.
 The only source is the **Release asset** (`.tgz`) in this repository.
 
 ```powershell
-$v = '0.9.0-stable'; $d = "$env:USERPROFILE\Downloads"
+$v = '0.9.1'; $d = "$env:USERPROFILE\Downloads"
 Invoke-WebRequest "https://github.com/WestFox-AwA/dsh-wish-specializer/releases/download/v$v/dsh-external-dsh-wish-specializer-$v.tgz" -OutFile "$d\dsh-external-dsh-wish-specializer-$v.tgz"
 Invoke-WebRequest "https://github.com/WestFox-AwA/dsh-wish-specializer/releases/download/v$v/SHA256SUMS-$v.txt" -OutFile "$d\SHA256SUMS-$v.txt"
 Get-Content "$d\SHA256SUMS-$v.txt"     # compare sha256 with the tgz you downloaded
@@ -109,7 +109,7 @@ dsh --profile po061
 
 ## Version and evidence
 
-- Current: **v0.9.0-stable**; previous stable: v0.8.4-stable
+- Current: **v0.9.1**; previous stable: v0.9.0-stable
 - All suites: `node po06/scripts/run-suites.mjs`; release gate: `node po06/scripts/check-release.mjs`
 - Compatibility: `dsh-0.1.7-rc.2` (run for real), `dsh-0.2.0-rc.2` (static contract check)
 - Author: 啃轮胎的西狐 · QQ group **1121399051** (announcements / install help)

@@ -13,7 +13,9 @@
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
-              suffix: Your working directory is {{cwd}}.
+              # 工作目录由宿主 runtime context 提供（Current working directory: …）；
+              # 这里不能引用 {{cwd}}：宿主只注册 provider/model，未注册变量会让整份预设渲染失败。
+              suffix: ''
               prefix: You are a coding agent powered by the {{model}} model.
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'

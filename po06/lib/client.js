@@ -4950,6 +4950,8 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
       const reasons = { 'scope-material-excluded': L('不属于本次专项，未读取、未附入', 'Outside this review scope; not read or attached'), 'model-text-only': L('当前模型不支持图像输入', 'Model does not accept images'),
         'model-image-capability-unknown': L('宿主未确认当前模型的图像能力', 'Image capability is not declared'),
         'read-tools-disabled-or-no-cwd': L('只读工具未开启或工作目录不可用', 'Read tools are off or workspace is unavailable'),
+        'read-tools-disabled': L('只读工具未开启（打开后才能读取附件）', 'Read-only tools are off; turn them on to read attachments'),
+        'no-cwd': L('本会话没有可用的工作目录', 'This session has no working directory'),
         'file-not-found': L('文件不存在', 'File not found'), 'outside-workspace': L('路径不在本会话工作目录内', 'Outside workspace'),
         'file-too-large': L('材料超过大小限制', 'Material exceeds size limit'), 'attachment-service-unavailable': L('图片附件服务不可用', 'Image attachment service unavailable') }
       if (!materials.length) return null

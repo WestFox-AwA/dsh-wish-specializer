@@ -36,3 +36,29 @@ test('片段本身仍是有效的 patch（insert + agent-preset + 插件清单�
   assert.ok(frag.includes("name: '@deepseek-ai/dsh-agent-preset'"), '必须是 agent-preset 行')
   assert.ok(frag.includes('@dsh-external/dsh-wish-specializer/check'), '预设要带上 wish-check 工具')
 })
+
+test('预设只引用宿主已注册的模板变量（issue #47：{{cwd}} 会让整份预设渲染失败）', () => {
+  // 宿主 prompt 渲染器对 section 做**严格**变量解析：未注册的变量直接抛
+  // unknown prompt variable，整份预设不可用。当前 DSH 只注册 provider / model。
+  const allowed = new Set(['provider', 'model'])
+  for (const rel of ['po06/cordis.patch.yml', 'po06/presets/wish.patch.yml']) {
+    // 只看生效内容：YAML 注释里的示例不算引用（注释不会被渲染）
+    const raw = readFileSync(join(ROOT, rel), 'utf8')
+    const NL = String.fromCharCode(10)
+    const text = raw.split(NL).filter((line) => !/^\s*#/.test(line)).join(NL)
+    for (const m of text.matchAll(/\{\{([^}]+)\}\}/g)) {
+      const name = m[1].trim()
+      assert.ok(allowed.has(name), rel + ' 引用了未注册的模板变量 {{' + name + '}}；宿主只注册 provider/model')
+    }
+  }
+})
+
+test('po06/package.json 导出 ./check（issue #41：预设声明了它，缺导出就加载失败）', () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'po06', 'package.json'), 'utf8'))
+  assert.ok(pkg.exports && pkg.exports['./check'], 'po06/package.json 必须导出 ./check')
+  const target = pkg.exports['./check'].default || pkg.exports['./check']
+  assert.equal(target, './lib/wish-check.js', './check 必须指向 lib/wish-check.js')
+  assert.ok(existsSync(join(ROOT, 'po06', 'lib', 'wish-check.js')), '被导出的文件必须存在')
+  const root = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
+  assert.ok(root.exports && root.exports['./check'], '根薄壳也必须导出 ./check')
+})

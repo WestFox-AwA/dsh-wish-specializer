@@ -265,9 +265,23 @@ function objectFromText(text) {
   return null
 }
 /** 摘要兜底：抓第一段有内容的文字（去掉围栏与多余空白）。 */
+/**
+ * 剥掉模型原样吐出的工具调用标记（issue #44）。
+ * 顾问在"没有工具可执行"的环境里仍会输出 `<…DSML…>` 这类调用块；
+ * 它们是协议标记，不是给用户看的正文，直接进 summary/directive 就是泄漏。
+ */
+export function stripToolMarkup(text) {
+  let t = String(text == null ? '' : text)
+  const BLOCK = new RegExp('<[^>\\n]{0,60}?DSML[^>\\n]{0,60}?>[\\s\\S]*?<\\/[^>\\n]{0,60}?DSML[^>\\n]{0,60}?>', 'gi')
+  const TAG = new RegExp('<\\/?[^>\\n]{0,60}?DSML[^>\\n]{0,60}?>', 'gi')
+  const PIPE = new RegExp('<\\|[^|>\\n]*\\|>', 'g')
+  t = t.replace(BLOCK, ' ').replace(TAG, ' ').replace(PIPE, ' ')
+  return t
+}
+
 function proseSummary(text, limit = 600) {
   const fence = String.fromCharCode(96, 96, 96)
-  const s = stripFence(String(text == null ? '' : text)).split(fence).join('').trim()
+  const s = stripToolMarkup(stripFence(String(text == null ? '' : text))).split(fence).join('').trim()
   if (!s) return ''
   const parts = s.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
   return (parts[0] || s).replace(/\s+/g, ' ').slice(0, limit)
@@ -286,11 +300,14 @@ export function parseAdvisorReport(text, evidenceIds, mode, resultIds = evidence
   // 救回：只要它说了话，就把它的话当成答复送回去（正文当摘要、verdict=unverified，
   // 不冒充任何证据）。用户 2026-10-18：很多次顾问想完了却一句话都不给，极其浪费。
   if (!report || typeof report !== 'object' || Array.isArray(report)) {
+    const cleaned = stripToolMarkup(raw).trim()
     const summary = proseSummary(raw)
-    if (!summary) return { ok: false, reason: 'advisor-empty-report' }
+    // 剥掉工具标记后什么都不剩：说明模型只吐了调用、没有给结论。
+    // 这时**不能**把标记当答复，也不能拼装指令（issue #44）。
+    if (!summary) return { ok: false, reason: 'advisor-no-usable-text', partial: true }
     return { ok: true, degraded: true, degradedReason: 'advisor-invalid-json',
       report: { verdict: safeVerdict(), summary, findings: [], checks: [], nextStep: '(not provided)', stopCondition: '(not provided)',
-        degraded: true, shapeIssues: ['prose-only'] } }
+        degraded: true, shapeIssues: ['prose-only'], __noGate: true, ...(cleaned !== String(raw).trim() ? { strippedToolMarkup: true } : {}) } }
   }
   const verdicts = mode === 'improve_result' ? ['suggestion','keep','unverified','need_user']
     : mode === 'develop_approach' ? ['suggestion','unverified','need_user']
@@ -319,6 +336,8 @@ export function parseAdvisorReport(text, evidenceIds, mode, resultIds = evidence
     if(report.verdict==='keep' && typeof report.contribution==='string' && report.contribution.trim()){report.verdict='suggestion';degradedNotes.push('keep-with-changes-to-suggestion')}
   }
   if (degradedNotes.length) { shapeIssues.push(...degradedNotes); report.degraded = true }
+  // 降级报告一律不加交付门（issue #44：那段「请工作模型调用 ask_user_question」是模板生成的）
+  if (report.degraded === true) report.__noGate = true
   if (shapeIssues.length) report.shapeIssues = shapeIssues
   // 引用校验（2026-09-30 加固）：容忍 read: 路径在**绝对/相对、斜杠方向、大小写**上的写法差异 ——
   // 顾问看到的是它自己调工具时的路径，我们记录的是解析后的路径，逐字比对会误杀合法引用。
@@ -489,7 +508,7 @@ export function createAdvisor({ resolveRuntime, log = () => {}, progress = null,
     else external?.addEventListener('abort', cancel, { once: true })
     let timer
     let uiRunId = null
-    let materialRows = []
+    let materialRows = [], materialWarnings = []
     let requestId = null
     let reviewRevision = null
     let coverageState = null
@@ -547,6 +566,7 @@ export function createAdvisor({ resolveRuntime, log = () => {}, progress = null,
           imageSupport: runtime.imageSupport, attachments: runtime.attachments, signal: controller.signal })
         const artifacts = bundle.evidence
         materialRows = [...bundle.materials, ...selectedMaterials.excluded]
+        if (Array.isArray(bundle.warnings) && bundle.warnings.length) materialWarnings = bundle.warnings.slice()
         ui('patch', { materials: materialRows })
         for (const row of bundle.materials) ui('event', { kind: 'tool', round: 0, tool: row.kind === 'image' ? 'image' : 'read', target: row.path, ok: row.sent })
         for (const id of bundle.evidenceIds) ids.add(id)
@@ -599,7 +619,7 @@ export function createAdvisor({ resolveRuntime, log = () => {}, progress = null,
         // Native bilingual contribution instructions avoid another model call for translation.
         if (!contribution && runtime.englishMode && runtime.translateInstruction) system = await runtime.translateInstruction(system)
         if (coverageState) for (const row of coverageState.rows || []) { ids.add(row.id); if (row.status === 'current') resultIds.add(row.id) }
-        let result,visualFirst=null,visualSupport=false
+        let result,visualFirst=null,visualSupport=false,toolFallbackReason=''
         ui('patch', { stage: 'thinking' })
         const visualReview=args.mode==='review_result'&&policy.visual
         if(visualReview){
@@ -635,13 +655,21 @@ export function createAdvisor({ resolveRuntime, log = () => {}, progress = null,
           //   无处可引 ⇒ 整份报告被 advisor-invalid-citation 拒掉）：
           //   · ids       = 实际**调用过**的 read 路径（读不到也算事实，可支持 findings）
           //   · resultIds = 真读到内容的那些（只有它能支持「满足」）——这道防线不动。
-          for (const row of result.trace || []) {
+          // issue #43：模块解析 / 消息形状这类**环境**问题不该让整次咨询失败。
+          // 退回无工具那条路（下面 `if (!result)` 会接住），原因记进输出里，便于调用方看清。
+          const setupError = typeof result?.error === 'string' ? result.error : ''
+          if (/^(tool-result-format-unavailable|llm-lib-unresolved|llm-unavailable)/.test(setupError)) {
+            toolFallbackReason = setupError
+            result = null
+          }
+          for (const row of result?.trace || []) {
             if (row.tool !== 'read' || row.ok !== true || row.rejected === true) continue
             const ref = 'read:' + row.args.path
             ids.add(ref)
             if (row.resultAvailable) resultIds.add(ref)
           }
-        } else if(!result) {
+        }
+        if (!result) {
           beatStall()
           result = await drainAdvisor(runtime.llm.stream({ provider: runtime.cfg.provider, model: runtime.cfg.model, sessionId: String(sid || ''),
             ...(runtime.cfg.reasoningEffort ? { reasoningEffort: runtime.cfg.reasoningEffort } : {}),
@@ -721,7 +749,7 @@ export function createAdvisor({ resolveRuntime, log = () => {}, progress = null,
       }
       const advisorReadMaterials=traceReadMaterials(output.trace,reviewRoot)
       materialRows=mergeReadMaterialVersions([...materialRows,...advisorReadMaterials],reviewRoot)
-      output = { ...output, ...(isContributionMode(args.mode) ? { contributionRevision: ADVISOR_CONTRIBUTION_REVISION } : {}), sessionId: sid, mode: args.mode, uiRunId, materials: materialRows, reviewScope: policy.scope, focus: policy.focus, requestId, revisionMarker: reviewRevision, coverage: coverageState }
+      output = { ...output, ...(isContributionMode(args.mode) ? { contributionRevision: ADVISOR_CONTRIBUTION_REVISION } : {}), ...(materialWarnings.length ? { materialWarnings } : {}), sessionId: sid, mode: args.mode, uiRunId, materials: materialRows, reviewScope: policy.scope, focus: policy.focus, requestId, revisionMarker: reviewRevision, coverage: coverageState }
       if (output.partial && output.report?.verdict === 'pass') {
         output.report = { ...output.report, verdict: 'unverified', summary: '调用被中止，仅保留已生成内容。' + output.report.summary }
       }
@@ -774,7 +802,7 @@ export function createAdvisor({ resolveRuntime, log = () => {}, progress = null,
         ...(output.ok ? {} : { detail: output.detail || null, rawReport: String(output.raw || '').slice(0, 4000) }), verdict: output.report?.verdict || null, ms: Date.now() - started, model: output.model || null }) } catch { /* diagnostics must not break the tool */ }
       return output
     } catch (error) {
-      let output = { ok: false, sessionId: sid, mode: args.mode, uiRunId, materials: materialRows, reviewScope: policy.scope, focus: policy.focus, requestId, revisionMarker: reviewRevision, coverage: coverageState, ms: Date.now() - started,
+      let output = { ok: false, ...(toolFallbackReason ? { toolFallbackReason } : {}), sessionId: sid, mode: args.mode, uiRunId, materials: materialRows, reviewScope: policy.scope, focus: policy.focus, requestId, revisionMarker: reviewRevision, coverage: coverageState, ms: Date.now() - started,
         reason: controller.signal.aborted ? (stalled ? 'advisor-stall-timeout' : timedOut ? 'advisor-timeout' : 'advisor-cancelled') : String(error?.message || error) }
       if(args.mode === 'review_result') {
         output={mode:args.mode,...output,...reviewOutcome(output),completionClaimAllowed:false}

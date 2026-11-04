@@ -36,7 +36,11 @@ test('越界/绝对/不存在/关闭读取/二进制材料明确不可用，不�
     assert.equal(out.resultIds.size, 0)
   }
   const off = await prepareAdvisorMaterials({ root, enabled: false, args: { files: [desc('out.html')] } })
-  assert.equal(off.materials[0].reason, 'read-tools-disabled-or-no-cwd')
+  // issue #45：原因码拆开，并且被丢弃的附件要显式告警
+  assert.equal(off.materials[0].reason, 'read-tools-disabled')
+  assert.ok(Array.isArray(off.warnings) && off.warnings.some((w) => w.startsWith('attachments-dropped:read-tools-disabled')), '关闭只读工具丢弃附件时必须告警')
+  const noCwd = await prepareAdvisorMaterials({ root: '', enabled: true, args: { files: [desc('out.html')] } })
+  assert.equal(noCwd.materials[0].reason, 'no-cwd', '没有工作目录是另一个原因，不能和开关关闭混在一起')
 })
 
 test('图片能力未知/不支持时不保存图片、不传块，卡片状态未检查', async () => {

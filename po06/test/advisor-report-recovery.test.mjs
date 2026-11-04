@@ -37,3 +37,19 @@ test('more than one repair, missing delimiters, unescaped value text or huge out
  assert.equal(recoverAdvisoryJson(raw.replace('A real optional gain.','A "broken" gain.')),null)
  assert.equal(recoverAdvisoryJson(raw.replace('A real optional gain.','x'.repeat(48001))),null) // whitespace is not paid content; trim rule handled below
 })
+
+test('issue #44：只吐工具标记的回复不得当作正文，也不得据此合成指令', () => {
+  // 顾问在「没有工具可执行」时仍会输出这类协议标记
+  const markup = '<||DSML|| calls> <||DSML|| invoke name="posix"> <||DSML|| parameter name="command">cat probe.md</||DSML|| parameter> </||DSML|| invoke> </||DSML|| calls>'
+  const only = parseAdvisorReport(markup, new Set(), 'improve_result')
+  assert.equal(only.ok, false, '剥离后没有正文 ⇒ 明确失败')
+  assert.equal(only.reason, 'advisor-no-usable-text')
+  assert.ok(!String(JSON.stringify(only)).includes('DSML'), '失败结果里也不能带标记')
+  // 有正文时：标记被剥掉，剩下的才是 summary
+  const mixed = '这次只看到配置层证据。' + markup
+  const parsed = parseAdvisorReport(mixed, new Set(), 'improve_result')
+  assert.equal(parsed.ok, true)
+  assert.ok(!parsed.report.summary.includes('DSML'), '正文里不得出现协议标记')
+  assert.ok(parsed.report.summary.includes('配置层证据'))
+  assert.equal(parsed.report.__noGate, true, '降级报告不合成交付门指令')
+})

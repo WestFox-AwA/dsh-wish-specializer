@@ -483,7 +483,17 @@ export async function runReadOnlyToolLoop(opts) {
   // 表现是"明明设了环境变量却still 解析不到"（测试夹具也指不过来）。
   const shapeT = o.shape === undefined ? await loadLlmLib({ env: process.env, argv1: process.argv[1], cwd: process.cwd() }) : o.shape
   const resultShape = resolveShape(shapeT)
-  if (typeof resultShape?.make !== 'function') return fail('tool-result-format-unavailable')
+  if (typeof resultShape?.make !== 'function') {
+    // issue #43：只给一个 reason 让人无从下手。把「试过哪些解析基准」一起带出去，
+    // 调用方（和用户）才能判断是缺模块、装错位置，还是该设 DSH_PO06_LLM_LIB。
+    const tried = shapeT && Array.isArray(shapeT.tried)
+      ? shapeT.tried.map((x) => x.source + (x.reason ? '(' + x.reason + ')' : '')).join(' | ')
+      : 'shape-injected'
+    // error 保持稳定的机器可读码（调用方按它判断），可执行的诊断放在独立字段里。
+    const out = fail('tool-result-format-unavailable')
+    out.errorDetail = { reason: (shapeT && shapeT.reason) || null, tried }
+    return out
+  }
   /** 宿主 llm 模块本身（`loadLlmLib` 的返回带 `mod`；直接传模块时就是它）。给工厂用。 */
   const llmMod = shapeT && shapeT.mod && typeof shapeT.mod === 'object' ? shapeT.mod : (shapeT && typeof shapeT.createAssistantMessage === 'function' ? shapeT : null)
 

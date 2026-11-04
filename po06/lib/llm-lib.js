@@ -24,10 +24,12 @@
 // 由调用方决定怎么报告（自检记一步失败、评估台直接抛）。
 // 反面做法（这里明确不做）：回落到某个"看起来像"的路径、或返回空对象让后面莫名其妙地崩。
 import { createRequire } from 'node:module'
-import { existsSync } from 'node:fs'
-import { isAbsolute, resolve } from 'node:path'
+import { existsSync, realpathSync } from 'node:fs'
+import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+/** 插件自身模块的 URL：作为「从插件这棵树里找」的解析基准。 */
+const SELF_URL = import.meta.url
 /** 要找的包名。bare specifier：解析基准由调用环境决定（见文件头 ②）。 */
 export const LLM_PKG = '@deepseek-ai/dsh-llm'
 /** 显式覆盖环境变量。 */
@@ -70,7 +72,7 @@ function defaultResolveSpec(base, spec) {
  * @param opts.cwd    argv1 是相对路径时的补全基准
  * @returns {Array<{source:string, spec:string, base?:string}>}
  */
-export function llmLibCandidates({ env = {}, argv1 = '', cwd = '' } = {}) {
+export function llmLibCandidates({ env = {}, argv1 = '', cwd = '', argv1Real = '', execPath = '', selfUrl = '' } = {}) {
   const out = []
   const ov = toImportSpec(env[OVERRIDE_ENV])
   if (ov) out.push({ source: 'env:' + OVERRIDE_ENV, spec: ov })
@@ -84,6 +86,21 @@ export function llmLibCandidates({ env = {}, argv1 = '', cwd = '' } = {}) {
     else if (cwd) base = resolve(String(cwd), raw)
     if (base) out.push({ source: 'host-entry', spec: LLM_PKG, base })
   }
+  // ⚠ 真机主因（issue #43）：npm 全局安装时 `bin/dsh` 是**软链**，argv1 指向软链本身，
+  //   它的祖先链里根本没有 dsh 的 node_modules（dsh-llm 嵌在 `<dsh>/node_modules/` 内）。
+  //   用 realpath 之后的真身（`<dsh>/lib/bin.js`）再解析一次就命中。
+  if (argv1Real && argv1Real !== raw) out.push({ source: 'host-entry-real', spec: LLM_PKG, base: argv1Real })
+  // node 运行时前缀：`<prefix>/bin/node` 的兄弟目录 `<prefix>/lib/node_modules`（npm -g 的实际落点）。
+  const exe = String(execPath || '').trim()
+  if (exe) {
+    const dir = resolve(exe, '..')
+    for (const probe of [join(dir, '..', 'lib', 'node_modules', '.po06-base.cjs'), join(dir, '..', 'node_modules', '.po06-base.cjs')]) {
+      out.push({ source: 'runtime-prefix', spec: LLM_PKG, base: probe })
+    }
+  }
+  // 插件自己所在的模块树（插件被装进 profile 时，能与宿主共享同一份 node_modules）。
+  const self = String(selfUrl || '').trim()
+  if (self) out.push({ source: 'plugin-self', spec: LLM_PKG, base: self })
   return out
 }
 
@@ -96,17 +113,25 @@ export function llmLibCandidates({ env = {}, argv1 = '', cwd = '' } = {}) {
  * @returns {{ok:boolean, spec?:string, path?:string, source?:string, reason?:string,
  *            tried:Array<{source:string, spec:string, reason?:string}>}}
  */
-export function resolveLlmLib({ env = {}, argv1 = '', cwd = '', resolveSpec, exists = existsSync } = {}) {
+export function resolveLlmLib({ env = {}, argv1 = '', cwd = '', resolveSpec, exists = existsSync,
+  realpathOf = null, execPath = '', selfUrl = '' } = {}) {
   const res = resolveSpec || defaultResolveSpec
-  const cands = llmLibCandidates({ env, argv1, cwd })
+  let argv1Real = ''
+  if (argv1 && typeof realpathOf === 'function') {
+    try { argv1Real = String(realpathOf(String(argv1))) } catch { argv1Real = '' }
+  }
+  const cands = llmLibCandidates({ env, argv1, cwd, argv1Real, execPath, selfUrl })
   const hostBase = (cands.find((c) => c.base) || {}).base
   const tried = []
   for (const c of cands) {
-    // 包名形式：必须有解析基准
+    // 包名形式：必须有解析基准。**每条候选用自己的 base**（曾经固定用第一条的 base，
+    // 于是新加的 realpath / runtime-prefix / plugin-self 候选永远按第一条基准解析，
+    // 等价于没加——issue #43 的软链场景就是这么"看起来修了其实没修"）。
     if (c.spec === LLM_PKG || (!c.base && !isFileUrl(c.spec) && !isAbsolute(c.spec))) {
-      if (!hostBase) { tried.push({ source: c.source, spec: c.spec, reason: 'no-base-to-resolve' }); continue }
+      const base = c.base || hostBase
+      if (!base) { tried.push({ source: c.source, spec: c.spec, reason: 'no-base-to-resolve' }); continue }
       try {
-        const p = res(hostBase, c.spec)
+        const p = res(base, c.spec)
         tried.push({ source: c.source, spec: p })
         return { ok: true, spec: pathToFileURL(p).href, path: p, source: c.source, tried }
       } catch (e) {
@@ -130,7 +155,10 @@ export function resolveLlmLib({ env = {}, argv1 = '', cwd = '', resolveSpec, exi
  */
 export async function loadLlmLib(opts = {}) {
   const { importMod, ...rest } = opts
-  const r = resolveLlmLib(rest)
+  // 生产入口在这里补上"环境里本来就有"的三条基准；直接调 resolveLlmLib 的地方
+  // （单测）保持纯净，候选数量不会被宿主环境悄悄改变。
+  const withDefaults = { execPath: process.execPath, selfUrl: SELF_URL, realpathOf: realpathSync, ...rest }
+  const r = resolveLlmLib(withDefaults)
   if (!r.ok) return r
   const imp = importMod || ((s) => import(s))
   try {

@@ -74,3 +74,16 @@ test('顾问报告里的 resolvedClaims 会原样保留（供台账销账）', a
   assert.equal(parsed.ok, true)
   assert.deepEqual(parsed.report.resolvedClaims, [{ id: 'adv-1', status: 'resolved', note: '已按新材质重做' }])
 })
+
+test('issue #46：回灌有上限、去重，并显式说明还有多少条没列入', () => {
+  const L = createLedger()
+  for (let i = 0; i < 12; i++) L.add('s1', { claim: '未结结论 ' + i, severity: 'minor' }, { turn: i })
+  // 重复表述不应重复回灌
+  L.add('s1', { claim: '未结结论 3', severity: 'minor' }, { turn: 20 })
+  const text = L.render('s1', false)
+  const items = (text.match(/^- \[/gm) || []).length
+  assert.ok(items <= LEDGER_MAX_OPEN, '回灌条目不得超过上限，实际 ' + items)
+  assert.ok(text.includes('未列入'), '超出上限要显式说明，不许无声截断')
+  const claims = text.split(String.fromCharCode(10)).filter((line) => line.startsWith('- ['))
+  assert.equal(new Set(claims).size, claims.length, '同一句话不得重复出现')
+})

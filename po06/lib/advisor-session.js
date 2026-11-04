@@ -40,6 +40,12 @@ export function createAdvisorWrapper({ ledger, policyFor }) {
       } catch { /* 台账坏掉不影响这次咨询 */ }
 
       const out = await execute(...args)
+      // 可见性（issue #46）：告诉调用方本轮带了几条历史结论，便于判断是否被历史污染。
+      let withPrior = out
+      if (injected && out && typeof out === 'object') {
+        const n = (injected.match(/^- \[/gm) || []).length
+        if (n > 0) withPrior = { ...out, priorConclusions: n }
+      }
       try {
         if (sid && out && out.ok === true) {
           const rep = out.report || {}
@@ -56,7 +62,7 @@ export function createAdvisorWrapper({ ledger, policyFor }) {
           if (Array.isArray(rep.resolvedClaims)) ledger.applyUpdates(sid, rep.resolvedClaims)
         }
       } catch { /* 记不上也不影响这次答复 */ }
-      return out
+      return withPrior
     }
     try { if (typeof execute?.dispose === 'function') wrapped.dispose = execute.dispose } catch { /* 只读属性就算了 */ }
     return wrapped

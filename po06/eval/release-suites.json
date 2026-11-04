@@ -1,10 +1,10 @@
 {
-  "at": "2026-10-27T00:28:52.807Z",
+  "at": "2026-11-04T15:55:30.760Z",
   "summary": {
     "suites": 146,
     "passed": 146,
     "failed": 0,
-    "passTotal": 1499,
+    "passTotal": 1505,
     "failing": []
   },
   "results": [
@@ -108,7 +108,7 @@
     },
     {
       "file": "advisor-ledger.test.mjs",
-      "pass": 8,
+      "pass": 9,
       "fail": 0,
       "exit": 0,
       "ok": true
@@ -157,7 +157,7 @@
     },
     {
       "file": "advisor-report-recovery.test.mjs",
-      "pass": 4,
+      "pass": 5,
       "fail": 0,
       "exit": 0,
       "ok": true
@@ -668,7 +668,7 @@
     },
     {
       "file": "llm-lib.test.mjs",
-      "pass": 12,
+      "pass": 14,
       "fail": 0,
       "exit": 0,
       "ok": true
@@ -808,7 +808,7 @@
     },
     {
       "file": "preset-packaging.test.mjs",
-      "pass": 3,
+      "pass": 5,
       "fail": 0,
       "exit": 0,
       "ok": true

@@ -12,7 +12,10 @@ test('complete inline before-image is reused only after actual current result ch
  const saved=memory.record({...first,output:output()});assert.equal(saved.baselineSaved,true);assert.equal(saved.benefitVerified,false)
  assert.equal(memory.prepare(first).context,null)
  const changed=memory.prepare({...base,inline:{text:'Actually changed result.',selectionComplete:true}})
- assert.equal(changed.context.before[0].text,'Original exact result.');assert.equal(changed.comparison.status,'comparison-pending');assert.equal(changed.comparison.benefitVerified,false)
+ // issue #46：正文**不再入库**。比较时只给「读过哪份材料、哪一版」，正文要它自己按 sha 重读。
+ assert.equal(changed.context.before[0].text,undefined,'记忆里不得保留正文');
+ assert.equal(changed.context.before[0].textRetained,false);assert.ok(changed.context.before[0].sha256);
+ assert.equal(changed.comparison.status,'comparison-pending');assert.equal(changed.comparison.benefitVerified,false)
  assert.equal(changed.evidenceIds[0],'P0');assert.equal(changed.images.length,0)
  assert.equal(memory.prepare({...base,requestId:'human:99',inline:{text:'Changed'}}).context,null)
  assert.equal(memory.prepare({...base,sessionId:'other',inline:{text:'Changed'}}).context,null)
@@ -48,7 +51,9 @@ test('English comparison keeps literal prior artifact data but not earlier Chine
  const memory=createContributionMemory(),prior={...base,englishMode:false,inline:{text:'原始实际产物',selectionComplete:true}}
  memory.record({...prior,output:{ok:true,report:{verdict:'suggestion',summary:'先前中文顾问叙述',contribution:'先前中文方法'}}})
  const current=memory.prepare({...base,englishMode:true,inline:{text:'Changed actual artifact.',selectionComplete:true}})
- assert.equal(current.context.before[0].text,'原始实际产物');assert.equal(current.context.previousContribution,'');assert.equal(current.context.previousSummary,'Previous observed contribution.')
+ // issue #46：跨语言比较同样不再携带正文，只保留引用（sha256 标识的那一版）
+ assert.equal(current.context.before[0].text,undefined);assert.equal(current.context.before[0].textRetained,false);
+ assert.equal(current.context.previousContribution,'');assert.equal(current.context.previousSummary,'Previous observed contribution.')
  assert.equal(memory.feedback({...base,englishMode:true}).summary,'Observed contribution is available; compare actual results.')
 })
 

@@ -87,7 +87,10 @@ export async function prepareAdvisorMaterials({ args, root, enabled, imageSuppor
     const fail = reason => {
       evidenceIds.add(row.id);
  row.reason = reason; limited = true; evidence.push({ id: row.id, path: row.path, purpose: row.purpose, status: row.status, evidenceType: row.evidenceType, selectionScope: row.selectionScope, selectionComplete: row.selectionComplete, wholeFileComplete: row.wholeFileComplete, reason }) }
-    if (!enabled || !root) { fail('read-tools-disabled-or-no-cwd'); continue }
+    // issue #45：把「开关关着」和「没有工作目录」拆开，否则「路径写错／文件不存在」
+    // 也会被这同一句盖住，调用方完全看不出该改什么。
+    if (!enabled) { fail('read-tools-disabled'); continue }
+    if (!root) { fail('no-cwd'); continue }
     try {
       if (row.kind === 'file') {
         if (!validRange(row)) { fail('invalid-line-range'); continue }
@@ -164,5 +167,14 @@ export async function prepareAdvisorMaterials({ args, root, enabled, imageSuppor
     evidenceIds.add(row.id); resultIds.add(row.id)
     limited ||= !row.wholeFileComplete
   }
-  return { materials, evidence, images, evidenceIds, resultIds, limited }
+  // 附件被丢弃时必须能被告知（issue #45：默认配置下静默丢弃，调用方以为建议基于文件）。
+  const warnings = []
+  if (!enabled) {
+    const n = descriptors.length
+    if (n > 0) warnings.push('attachments-dropped:read-tools-disabled:' + n)
+  } else if (!root) {
+    const n = descriptors.length
+    if (n > 0) warnings.push('attachments-dropped:no-cwd:' + n)
+  }
+  return { materials, evidence, images, evidenceIds, resultIds, limited, warnings }
 }

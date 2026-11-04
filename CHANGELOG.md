@@ -2,6 +2,36 @@
 
 本项目版本号遵循 `0.x` 阶段的语义化：`0.<minor>.<patch>`；预发布版本带 `-beta.N` 后缀（面板中显示为 `0.3.0beta1`）。
 
+## 0.9.1（修 issue #41 #43 #44 #45 #46 #47 #48）
+
+这一版把 2026-10-26 之后报告的问题一次修完，并**重新打包装箱**——#48/#41 的要点正是"main 修了，但 Release 附件还是旧的"。
+
+### 预设与打包
+
+- **#41** `po06/package.json` 补上 `./check` 导出（指向 `lib/wish-check.js`）。v0.9.0-stable 里预设声明了这个子路径却没有导出，导致 Wish 预设 `ERR_PACKAGE_PATH_NOT_EXPORTED` 加载失败。
+- **#47** Wish 预设的 persona `suffix` 不再使用 `{{cwd}}`。宿主只注册 `provider` / `model`，未注册变量会让**整份预设**渲染失败；工作目录本来就由 runtime context 提供。发版门补一条机械断言：预设模板里出现的变量必须在 `{provider, model}` 内（YAML 注释不算）。
+
+### 顾问（advisor）
+
+- **#43** 只读工具开启后 `consult_result` 100% 失败（`tool-result-format-unavailable`）：
+  - `llm-lib` 的解析基准扩到四条：宿主入口、**宿主入口的 realpath（npm 全局安装的软链形态）**、node 运行时前缀 `<prefix>/lib/node_modules`、插件自身模块树；并且**每条候选用自己的基准**（原先固定用第一条的基准，新候选等于没加）。
+  - 形状拿不到时不再整次咨询失败，而是**退回无工具路径**，原因记在 `toolFallbackReason`。
+  - 失败信息保留稳定错误码，可执行的诊断放到 `errorDetail`（含 `tried`）。
+- **#44** 降级路径不再把工具标记当正文：新增 `stripToolMarkup`，剥掉 `<…DSML…>` 调用块；剥完为空 ⇒ 显式 `advisor-no-usable-text`，不再编造摘要；降级报告一律 `__noGate`，不再合成「请工作模型调用 ask_user_question」这类指令。
+- **#45** 附件被丢弃不再静默：原因码拆成 `read-tools-disabled` / `no-cwd`（不再与"路径写错/文件不存在"混成一条），响应里新增 `materialWarnings`（如 `attachments-dropped:read-tools-disabled:N`）。
+- **#46** 顾问记忆不再无界回灌：
+  - **正文不入库**：`contribution-memory` 只保留 `path / kind / sha256 / 行范围`，回放时给引用并标 `textRetained:false`，需要时按 sha 重读（"读一次 = 永久记住"结束）。
+  - 回灌限流：台账上限 8 条、去重、超出的显式写「另有 N 条未列入」，不再无声截断。
+  - 可见性：本轮带了历史结论时，输出带 `priorConclusions`。
+
+### 注入
+
+- **#48** 「超频」与优化档位彻底独立：档位=关闭时仍注入模型状态文案（`main` 上 2026-10-26 的修复这次真的进了产物）。
+
+### 验证
+
+- 全量 **146 套 / 1505 项断言**通过；新加回归：`#41`（导出 + 文案）、`#43`（候选与软链解析）、`#44`（标记剥离与无指令）、`#45`（原因码与告警）、`#46`（正文不入库、限流去重）。
+
 ## 0.9.0-stable（正式版）
 
 从 `0.9.0-beta-1` 到这一版共 152 个提交。全量 146 套 / 1498 项断言通过（`node po06/scripts/run-suites.mjs`）。
