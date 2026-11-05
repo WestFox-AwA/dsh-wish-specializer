@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-04T15:55:30.760Z",
+  "at": "2026-11-05T07:18:41.042Z",
   "summary": {
-    "suites": 146,
-    "passed": 146,
+    "suites": 147,
+    "passed": 147,
     "failed": 0,
-    "passTotal": 1505,
+    "passTotal": 1508,
     "failing": []
   },
   "results": [
@@ -779,6 +779,13 @@
       "ok": true
     },
     {
+      "file": "posix-pipe.test.mjs",
+      "pass": 2,
+      "fail": 0,
+      "exit": 0,
+      "ok": true
+    },
+    {
       "file": "posix-tool-schema.test.mjs",
       "pass": 8,
       "fail": 0,
@@ -976,7 +983,7 @@
     },
     {
       "file": "tool-continuation.test.mjs",
-      "pass": 7,
+      "pass": 8,
       "fail": 0,
       "exit": 0,
       "ok": true

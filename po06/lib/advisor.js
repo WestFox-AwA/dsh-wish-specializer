@@ -643,6 +643,8 @@ export function createAdvisor({ resolveRuntime, log = () => {}, progress = null,
             // x-*-session 头，缺了就是 400 MissingSessionID（优化器那条 2026-10-22 修过，
             // 顾问这条 2026-10-26 才补上——两条路调的是同一个循环，不能只修一条）。
             sessionId: sid,
+            // 一次被拒 ≠ 查证结束：把拒绝理由回灌给模型再试一次（ollama ds41f 常写 `… | head`）
+            rejectPolicy: 'retry-once',
             // ⚠ 查证预算必须**小于**总预算：工具循环在预算用尽后仍要跑一轮「用已有证据出结论」，
             //   真机实测（2026-09-30）把两者设成相等 ⇒ 总耗时 89.0s / 预算 90.0s，**只差 1 秒就撞线**，
             //   那一轮结论是和截止时间抢出来的。留 25 秒给最终答复。

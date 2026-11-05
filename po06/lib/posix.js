@@ -290,7 +290,15 @@ function execOne(root, cmd, input) {
     // ⚠ 不能把 `-n2` 这种当文件名——那会让 head/tail 去读一个叫 `-n2` 的文件（首版就错在这）。
     const n = Number(flags.nValue) || Number(args.filter((a) => /^\d+$/.test(a))[0]) || 10
     const file = args.filter((a) => !/^\d+$/.test(a))[0]
-    if (!file) return reject(name + ' 需要文件名')
+    if (!file) {
+      // `… | head -n 50` 是最常见的写法：没有文件名时按**管道输入**取前/后 N 行。
+      // 以前这里直接拒绝（"head 需要文件名"），而一次拒绝会终止整轮查证——
+      // 模型（尤其 ollama 的 ds41f）习惯带 `| head`，于是顾问看起来"读不到东西"。
+      if (!input || !Array.isArray(input.lines)) return reject(name + ' 需要文件名（或从管道接收内容，例如 `… | head -n 50`）')
+      const piped = input.lines
+      const cut = name === 'head' ? piped.slice(0, n) : piped.slice(Math.max(0, piped.length - n))
+      return ok(cut.join(String.fromCharCode(10)))
+    }
     const abs = inside(root, file)
     if (!abs) return reject('路径越出项目范围')
     const rd = readText(abs, name, file)

@@ -30,7 +30,7 @@ test('a mixed successful/rejected batch and native thinking replay reach the fin
   assert.equal(h.calls.length,2);assert.equal(out.rounds,2);assert.equal(out.toolCalls,2)
   assert.equal(out.usageSum.totalTokens,21);assert.equal(out.usageKnownCalls,2)
   assert.equal(out.trace[0].ok,true);assert.equal(out.trace[1].rejected,true)
-  assert.ok(h.calls[0].tools);assert.equal(h.calls[1].tools,undefined)
+  assert.ok(h.calls[0].tools);assert.equal(h.calls[1].tools,undefined,'默认策略：一次拒绝即收口（优化器的真实回放夹具锁着这条）')
   assert.equal(h.calls[0].messages.length,1,'earlier request arrays do not mutate during continuation')
   assert.deepEqual(h.options.messages,original,'caller task history is not mutated')
   const messages=h.calls[1].messages
@@ -82,9 +82,33 @@ test('cancelling after a rejected result prevents the final model request',async
   assert.equal(h.calls.length,1);assert.equal(out.trace.length,1)
 })
 
-test('a model that requests another tool during finalization fails without executing or restarting it',async t=>{
-  const h=setup(t,(_o,n)=>n===1?[call('denied','run',{command:'which node'}),done('tool-calls')]:[call('extra','read',{path:'note.txt'}),done('tool-calls')])
-  const out=await runReadOnlyToolLoop(h.options)
+test('two consecutive rejected rounds finalize, and a tool call during finalization fails without executing',async t=>{
+  // 连续两轮都被拒绝 ⇒ 收口（防止模型在非法写法上原地打转）；此后若仍要调工具就是协议错误。
+  const h=setup(t,(_o,n)=>{
+    if(n===1)return [call('denied','run',{command:'which node'}),done('tool-calls')]
+    if(n===2)return [call('denied2','run',{command:'which npm'}),done('tool-calls')]
+    return [call('extra','read',{path:'note.txt'}),done('tool-calls')]
+  })
+  // 顾问使用的策略：拒绝可以被改正一次，连续两轮才收口
+  const out=await runReadOnlyToolLoop({ ...h.options, rejectPolicy: 'retry-once' })
   assert.equal(out.ok,false);assert.equal(out.error,'tool-calls-after-finalization')
-  assert.equal(h.calls.length,2);assert.equal(out.toolCalls,1,'final tool request is not executed')
+  assert.equal(h.calls.length,3)
+  assert.equal(out.toolCalls,2,'two rejected calls executed; the final request is not executed')
+})
+
+test('顾问策略：一次被拒后仍可继续查证（retry-once）', async (t) => {
+  // ollama ds41f 习惯写 `… | head`，会被虚拟 POSIX 拒绝；拒绝只是"这条写法不合法"，
+  // 把理由回灌给模型再试一次，而不是立刻结束整轮查证。
+  const h = setup(t, (_o, n) => {
+    if (n === 1) return [call('denied', 'run', { command: 'which node' }), done('tool-calls')]
+    if (n === 2) return [call('good', 'read', { path: 'note.txt' }), done('tool-calls')]
+    return [{ type: 'text-delta', text: answer }, done()]
+  })
+  const out = await runReadOnlyToolLoop({ ...h.options, rejectPolicy: 'retry-once' })
+  assert.equal(out.ok, true, out.error)
+  assert.equal(h.calls.length, 3, '被拒之后还有一次改正机会')
+  assert.ok(h.calls[1].tools, '第二回合仍然可以调工具')
+  assert.equal(out.trace[0].rejected, true)
+  assert.equal(out.trace[1].ok, true)
+  assert.equal(out.text, answer)
 })

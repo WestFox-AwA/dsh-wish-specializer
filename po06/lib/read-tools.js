@@ -527,6 +527,9 @@ export async function runReadOnlyToolLoop(opts) {
   let rounds = 0
   let capped = false
   let finalize = false
+  // 连续被拒绝的轮数：拒绝是「这条写法不合法」，不是「证据到手了」。
+  const rejectPolicy = o.rejectPolicy === 'retry-once' ? 'retry-once' : 'finalize'
+  let rejectRounds = 0
   let error = null
   let text = '', finish = null
   for (let round = 1; round <= maxRounds + 1; round += 1) {
@@ -610,9 +613,18 @@ export async function runReadOnlyToolLoop(opts) {
     }
     if (signal?.aborted) { error = 'cancelled'; break }
     messages.push(...toolResultMessages(calls, outputs, resultShape))
-    // A rejected read is a tool result, not a failed model completion. Close further
-    // lookup, then let the model finish from this same conversation once.
-    if (outputs.some(output => output.rejected === true)) finalize = true
+    // 拒绝的是**这一条调用**，不是这次咨询：把拒绝理由回灌给模型，允许它下一轮换写法。
+    // 以前一次拒绝就 `finalize`（整轮查证结束），于是习惯写 `… | head` 的模型（ollama ds41f）
+    // 只要第一条命令被拒，顾问就再也读不到东西——表现就是"顾问用不了这个模型"。
+    // 仍然防打转：**连续两轮**都被拒绝才收口。
+    if (outputs.some((output) => output.rejected === true)) {
+      rejectRounds += 1
+      // `finalize`（默认，优化器沿用）：一次拒绝就收口 —— 有真实回放夹具把这条形状锁住了。
+      // `retry-once`（顾问）：拒绝是"这条写法不合法"，把理由回灌给模型让它改一次；
+      //   连续两轮都被拒才收口，避免原地打转。ollama ds41f 会写 `… | head`，正是被这条卡住的。
+      const limit = rejectPolicy === 'retry-once' ? 2 : 1
+      if (rejectRounds >= limit) finalize = true
+    } else rejectRounds = 0
   }
   const outText = String(text || '')
   return {
