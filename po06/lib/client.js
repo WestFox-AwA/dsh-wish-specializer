@@ -4681,7 +4681,9 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
           onCollapse: collapseToBall,  // 收起为球
           onCloseSent: closeSent,      // foot-sent 的「关闭」
         }) : null,
-        pipelineReady && ovBall && ovBall.visible ? h(InterceptBall, {
+        // 完成后不再留「结果 / 已发送」小球（用户 2026-11-07：大家通常不需要它）。
+        // 仍保留「优化中收起为球」那条路：那时球是"消息还被拦着"的唯一提示，不能一起去掉。
+        pipelineReady && ovBall && ovBall.visible && ovBall.phase === 'optimizing' ? h(InterceptBall, {
           ball: ovBall, tier,
           onOpen: reopenFromBall,
           onMove: (p) => setOvBall((b) => (b ? { ...b, pos: p } : b)),
