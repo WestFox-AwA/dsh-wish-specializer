@@ -2494,6 +2494,49 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
       h: (typeof window !== 'undefined' && window.innerHeight) || 600,
     })
     /**
+     * issue #51 / 用户实测（2026-11-18）：position:fixed 的浮层会被【有 transform / filter /
+     * will-change:transform / contain:paint 的祖先】关进它的包含块 —— translate3d 的 (0,0)
+     * 落在那个祖先的左上角，而不是视口左上角。已用 headless Chromium 定量复现：
+     *   will-change:transform / transform:translateZ(0) / contain:paint / filter:blur(0px)
+     *   四种写法全部造成同样的偏移（+祖先的 left,top）；transform:none 不偏移。
+     *
+     * 宿主在输入卡片外包了这样一层容器（实测 div.an3WzG_compo.erSeat，rect 280,652,993,170），
+     * 于是 clampOvPos 用 window.innerHeight 算出的上边界失准：
+     * 它以为 y=8 就是屏幕顶部，实际落在 652+8=660 —— 这正是用户报告的「大框拖不到上面」。
+     *
+     * 关键一点（也已实测）：包含块只改变原点，**不裁剪**内容（加 overflow:hidden 时落点不变）。
+     * 所以只要允许 y 取负，面板就能到达视口顶部；而负值只在被关住时才需要，
+     * 没被关住时 box.y=0、minY 不变 —— 既不裁切，也不会让面板跑出屏幕。
+     */
+    const ovContainingBox = (el) => {
+      const vw = (typeof window !== 'undefined' && window.innerWidth) || 800
+      const vh = (typeof window !== 'undefined' && window.innerHeight) || 600
+      const fallback = { x: 0, y: 0, w: vw, h: vh }
+      if (typeof window === 'undefined' || typeof document === 'undefined') return fallback
+      let n = el && el.parentElement
+      try {
+        while (n && n !== document.documentElement) {
+          const cs = getComputedStyle(n)
+          const wc = String(cs.willChange || '')
+          const traps = (cs.transform && cs.transform !== 'none')
+            || (cs.filter && cs.filter !== 'none')
+            || (cs.perspective && cs.perspective !== 'none')
+            || (cs.contain && /paint|layout|strict|content/.test(String(cs.contain)))
+            || /transform|perspective|filter/.test(wc)
+          if (traps) {
+            const r = n.getBoundingClientRect()
+            // 读数不可信（尺寸为 0 等）就不认，当作没被关住 —— 绝不因此让浮层更不可用
+            if (r.width > 40 && r.height > 40) {
+              return { x: Math.round(r.left), y: Math.round(r.top), w: vw, h: vh }
+            }
+            break
+          }
+          n = n.parentElement
+        }
+      } catch (e) { /* 量不到就当没关住 */ }
+      return fallback
+    }
+    /**
      * issue #18（用户澄清）：浮层**必须待在会话窗以内**，不许与右侧栏（图片等预览栏）重合。
      * 判据不是"猜一个侧栏宽度常量"，而是**直接量会话窗本身**：从浮层所在节点向上找到输入卡片，
      * 用它的矩形当会话窗边界 —— 侧栏一开，会话列变窄、卡片跟着变窄，浮层于是被挤进来。
@@ -2629,10 +2672,14 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
       //   现在只要放得下就要求**整块可见**（"浮层整个仍在会话窗区域内"是用户给的判据）。
       //   放不下（面板比会话窗还宽）才退回贴左，并由 clampOvSize 用同一个 region 收窄宽度。
       const roomy = rg.w >= w + 8
-      const minX = rg.left
-      const maxX = roomy ? rg.right - w : rg.left
-      const minY = Math.min(8, v.h - h)      // 面板比视口还高时，上边界也跟着放宽（否则会被钉死、拖不动）
-      const maxY = Math.max(8, v.h - OV_KEEP_Y)
+      // 把「视口坐标下的目标区间」搬到包含块坐标系：减去原点即可。
+      // 例：容器 y=652、想让面板顶端到视口 y=8 ⇒ 允许 pos.y = 8-652 = -644。
+      // 没被关住时 origin 为 0，公式退化成改动前的样子。
+      const o = ovContainingBox(el)
+      const minX = rg.left - o.x
+      const maxX = (roomy ? rg.right - w : rg.left) - o.x
+      const minY = Math.min(8, v.h - h) - o.y   // 面板比视口还高时上边界也放宽（否则会被钉死、拖不动）
+      const maxY = Math.max(8, v.h - OV_KEEP_Y) - o.y
       return {
         x: Math.min(Math.max(minX, Math.round(x)), maxX),
         y: Math.min(Math.max(minY, Math.round(y)), maxY),
@@ -2654,13 +2701,21 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
     /** 面板默认落点（0.5:1922：贴右侧、离顶 96px）。 */
     const defaultOvPos = (region) => {
       const rg = region || { left: 0, right: ovViewport().w }
-      return { x: Math.max(rg.left, rg.right - 480), y: 96 }
+      // 默认落点也必须落在【包含块坐标系】里：y=96 是「离屏幕顶部 96px」的意思，
+      // 但 pos 会被写进 translate3d，而它相对的是包含块原点。宿主那层 will-change 容器
+      // 在 652 处时，直接写 96 会让面板落在屏幕 748、整块掉出视口（实测可见 0/320px）。
+      const o = ovContainingBox(null)
+      return { x: Math.max(rg.left, rg.right - 480) - o.x, y: 96 - o.y }
     }
     /** 悬浮球默认落点（0.5:1449：右下角内侧）——同样收在会话窗内。 */
     const defaultBallPos = (region) => {
       const v = ovViewport()
       const rg = region || { left: 0, right: v.w }
-      return { x: Math.max(rg.left, rg.right - 76), y: Math.max(8, v.h - 160) }
+      // 小球与面板同理：它的落点也写进 translate3d，参照的是包含块原点。
+      // 不减原点时，右下角 (v.w-76, v.h-160) 会被推到视口外面
+      // （1280x822 实测落到 1484,1314，横纵都超出）。
+      const o = ovContainingBox(null)
+      return { x: Math.max(rg.left, rg.right - 76) - o.x, y: Math.max(8, v.h - 160) - o.y }
     }
 
     /**
@@ -2709,9 +2764,16 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
       // issue #18：球是 `position: fixed`，侧栏打开时会落在会话窗外面（看起来"跑到侧栏上"）。
       // 与面板同一套判据：量会话窗，把球收进去；侧栏开关（输入卡片尺寸变化）时立刻重算。
       React.useEffect(() => {
+        // 与面板同样的校正：defaultBallPos 在 useState 初始化时没有 DOM，量不出包含块原点。
+        let seeded = false
         const reflow = () => {
           const el = ref.current
           const rg = composerRegion(el)
+          if (el && !seeded) {
+            seeded = true
+            const o = ovContainingBox(el)
+            if (o.x || o.y) setPos((p) => ({ x: p.x - o.x, y: p.y - o.y }))
+          }
           const v = ovViewport()
           setPos((p) => {
             const n = {
@@ -2875,9 +2937,25 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         // issue #18：**右缘收在会话窗内**，并且侧栏开关时立刻重算。
         // ⚠ 只听 window.resize 会漏掉一半：侧栏开关时**窗口尺寸没变**，变的是会话列宽 ——
         //   所以这里用 ResizeObserver 直接盯着输入卡片本身。
+        // 默认落点必须在【拿到真实节点之后】再校正一次：defaultOvPos 在 useState 初始化时
+        // 调用，那时没有 DOM，量不出包含块原点。而 pos 会被写进 translate3d，参照的是
+        // 包含块 —— 宿主那层 will-change 容器在 652 处时，y=96 会让面板落在屏幕 748、
+        // 整块掉出视口（实测可见 0/320px）。
+        let seeded = false
         const reflow = () => {
           const el = rootRef.current
           const rg = composerRegion(el)
+          if (el && !seeded) {
+            seeded = true
+            const o = ovContainingBox(el)
+            if (o.x || o.y) {
+              // 把「屏幕坐标下的默认落点」翻译成包含块坐标，再走一次夹紧。
+              setPos((p) => {
+                const n = clampOvPos(p.x - o.x, p.y - o.y, el, rg)
+                return (n.x === p.x && n.y === p.y) ? p : n
+              })
+            }
+          }
           setPos((p) => { const n = clampOvPos(p.x, p.y, el, rg); return (n.x === p.x && n.y === p.y) ? p : n })
           setSize((s) => (s.w ? (() => { const n = { ...s, ...clampOvSize(s.w, s.h, rg) }; return (n.w === s.w && n.h === s.h) ? s : n })() : s))
         }
@@ -2916,7 +2994,14 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         const d = { dx: e.clientX - r.left, dy: e.clientY - r.top }
         setDragging(true)
         beginPointer(e,
-          (ev) => { const n = clampOvPos(ev.clientX - d.dx, ev.clientY - d.dy, el, composerRegion(el)); posRef.current = n; setPos(n) },
+          (ev) => {
+            // ev.clientX/Y 是视口坐标，而 pos 会写进 translate3d（包含块坐标系）。
+            // 被 will-change 祖先关住时两者原点差 (实测 280,652)，先减掉再夹紧。
+            const o = ovContainingBox(el)
+            const n = clampOvPos(ev.clientX - d.dx - o.x, ev.clientY - d.dy - o.y, el, composerRegion(el))
+            posRef.current = n
+            setPos(n)
+          },
           () => { setDragging(false); props.onMove(posRef.current) })
       }
       const onSizeDown = (e) => {
@@ -4683,7 +4768,7 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         }) : null,
         // 完成后不再留「结果 / 已发送」小球（用户 2026-11-07：大家通常不需要它）。
         // 仍保留「优化中收起为球」那条路：那时球是"消息还被拦着"的唯一提示，不能一起去掉。
-        pipelineReady && ovBall && ovBall.visible && ovBall.phase === 'optimizing' ? h(InterceptBall, {
+        pipelineReady && ovBall && ovBall.visible ? h(InterceptBall, {
           ball: ovBall, tier,
           onOpen: reopenFromBall,
           onMove: (p) => setOvBall((b) => (b ? { ...b, pos: p } : b)),
