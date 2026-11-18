@@ -3343,6 +3343,29 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
     //   · **readTools 三态**：第一次 `/status` 读到它之前**不发这个字段**——
     //     否则会把"文件里没写"变成"显式 false"，那是把"未设置"写成了"用户选过关"。
     //   · **保存后就重新拉 /status**（界面与后端一致），失败就在控件旁给一行短错误，不弹窗、不静默。
+    /**
+     * 控件栏错误边界。
+     * 病灶：React 里子组件抛错会卸载整棵子树，而 ControlBar 原先没有边界兜底，
+     *   插件也没有 window.onerror / unhandledrejection 捕获 ⇒ 一次渲染异常 = 控件栏静默消失，
+     *   且因挂载 effect 依赖 [sessionId]，不切会话就永不重挂（真机实测：B0 连续 50 次采样不恢复）。
+     * 这一层只做两件事：不让异常扩散；把异常写进 client-log 让它可查（否则只能猜）。
+     */
+    class BarBoundary extends React.Component {
+      constructor(props) { super(props); this.state = { err: null } }
+      static getDerivedStateFromError(err) { return { err: err || new Error("unknown") } }
+      componentDidCatch(err, info) {
+        try {
+          apiPost("/client-log", {
+            event: "bar-crash", sid: (this.props && this.props.sessionId) || "",
+            detail: (String((err && err.message) || err) + " @ " + String((info && info.componentStack) || "").replace(/\s+/g, " ")).slice(0, 200),
+          }).catch(() => {})
+        } catch (e) { /* noop */ }
+      }
+      componentDidUpdate(prev) {
+        if (this.state.err && prev && prev.sessionId !== this.props.sessionId) this.setState({ err: null })
+      }
+      render() { return this.state.err ? null : this.props.children }
+    }
     function ControlBar(props) {
       // 宿主按**标准 props** 注入：`sessionId`（会话作用域）与 `inputActions`（放行通道，见 slots.d.ts:201-255）。
       // ⚠ `inputActions` 拿不到 ⇒ **绝不拦截**（拦下却没有放行通道 = 把用户的消息吞掉）。
@@ -5476,6 +5499,13 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         } catch (e) { return null }   // 取不到 DOM 时不影响功能：最坏是没有悬停反馈
       }
       ensureUiCss()
+      // 全局异常埋点：插件原先零捕获，任何渲染/异步异常都静默消失，只能靠猜。
+      own(() => {
+        const onErr = (ev) => { try { apiPost("/client-log", { event: "page-error", detail: String((ev && (ev.message || (ev.reason && ev.reason.message))) || ev).slice(0, 180) }).catch(() => {}) } catch (e) { /* noop */ } }
+        window.addEventListener("error", onErr)
+        window.addEventListener("unhandledrejection", onErr)
+        return () => { try { window.removeEventListener("error", onErr); window.removeEventListener("unhandledrejection", onErr) } catch (e) { /* noop */ } }
+      }, NS + ": global-error-hook")
       // 卸载即净：**只有仍归我所有**才摘。旧实例退休时若新实例已接管，就不许摘（上面那段竞态）。
       // ⚠ 必须按 id 取**当前**那一张，不能闭包捕获注入时的那张：自愈会重建元素，
       //   捕获旧引用会让"新表留在 DOM 里、被摘的是已脱离文档的旧表" ⇒ 卸载不净（本用例抓到过）。
@@ -5645,7 +5675,9 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
 
       // ① 控件栏（P10 换的挂载点：从 conversation.input.dock 搬到 conversation.input.left；
       //    旧的小胶囊**不再挂载**——"胶囊 + 一排控件"同时出现只会更乱）
-      mount('conversation.input.left', 'prompt-optimizer', 20, ControlBar)
+      // 用错误边界包住：抛错时不扩散、可记录、会话切换后可重试。
+      const ControlBarSafe = (props) => h(BarBoundary, { sessionId: props && props.sessionId }, h(ControlBar, props))
+      mount('conversation.input.left', 'prompt-optimizer', 20, ControlBarSafe)
       mount('shell.overlay', NS + '-panel', 40, () => null)   // 面板本体在控件栏里渲染；这一条保证浮层槽可用
       mount('settings.plugins.tab', NS, 40, SettingsTab)
       // ⑤ 「本次注入」卡片：挂宿主的 **commandview** 子槽（按命令名分发，/vmake 同款机制）。
