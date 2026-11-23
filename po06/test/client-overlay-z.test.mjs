@@ -24,7 +24,7 @@ function load(doc) {
   const regs = []
   const win = {
     __ModuleLoader__: { load: (r) => regs.push(r) }, innerWidth: 1200, innerHeight: 900,
-    getComputedStyle: (el) => ({ position: (el && el.__position) || 'static' }),
+    getComputedStyle: (el) => ({ position: (el && el.__position) || 'static', ...(el && el.__style ? el.__style : {}) }),
     setTimeout: (fn) => { fn(); return 0 },
     addEventListener: () => {}, removeEventListener: () => {},
   }
@@ -109,6 +109,22 @@ test('尺寸上限跟着会话窗走；悬浮球同样不允许落在侧栏那�
   assert.equal(d.clampOvSize(460, 5000, rg).h, 900 - 16, '高度上限仍按视口')
   assert.equal(d.defaultBallPos(rg).x, rg.right - 76)
   assert.equal(d.defaultBallPos({ left: 0, right: 1200 }).x, 1200 - 76, '没有 region 时维持原判据')
+})
+
+test('fixed 浮层被 will-change/transform 祖先关住时，位置坐标减去包含块原点（issue #51 / PR53）', () => {
+  const dom = fakeDoc({ cardLeft: 100, cardRight: 900 })
+  const trap = {
+    __style: { willChange: 'transform' },
+    parentElement: dom.body,
+    getBoundingClientRect: () => ({ left: 280, top: 652, width: 993, height: 170 }),
+  }
+  dom.card.parentElement = trap
+  const { d } = load(dom)
+  const origin = d.ovContainingBox(dom.node)
+  assert.deepEqual(origin, { x: 280, y: 652, w: 1200, h: 900 })
+  const el = { offsetWidth: 460, offsetHeight: 320, parentElement: dom.node }
+  const pos = d.clampOvPos(0, -700, el, { left: 100, right: 900, w: 800, h: 900 })
+  assert.ok(pos.y <= -644, '屏幕顶部 8px 在包含块坐标里必须允许负 y：' + pos.y)
 })
 
 // ── 右侧栏可能是固定浮层（不压缩会话列）────────────────────────────────────

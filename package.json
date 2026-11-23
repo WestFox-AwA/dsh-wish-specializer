@@ -18,7 +18,9 @@
     "./cordis.patch.yml": "./po06/cordis.patch.yml",
     "./package.json": "./package.json"
   },
-  "license": "BSD-3-Clause",
+  "engines": {
+    "dsh": ">=0.2.2-rc.1"
+  },
   "peerDependencies": {
     "cordis": ">=4.0.0-rc <5"
   },

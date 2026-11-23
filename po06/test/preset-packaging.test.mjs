@@ -62,3 +62,10 @@ test('po06/package.json 导出 ./check（issue #41：预设声明了它，缺导
   const root = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
   assert.ok(root.exports && root.exports['./check'], '根薄壳也必须导出 ./check')
 })
+
+test('发布包声明 DSH 兼容下限并与根薄壳同步', () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'po06', 'package.json'), 'utf8'))
+  const root = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
+  assert.equal(pkg.engines?.dsh, '>=0.2.2-rc.1', '发布包需声明 DSH 0.2.2-rc.1 起的客户端契约')
+  assert.equal(root.engines?.dsh, pkg.engines.dsh, '根薄壳与 po06 真源的 engines.dsh 必须一致')
+})
