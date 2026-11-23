@@ -81,12 +81,8 @@ try {
   // ── 2. 解包到隔离目录 ──────────────────────────────────────────────
   const ext = join(DRILL, 'extracted')
   mkdirSync(ext, { recursive: true })
-  // ⚠ Windows 上不能把 `C:\...` 直接交给 GNU tar：它会把 `C:` 当远端主机
-  //   （"tar (child): Cannot connect to C: resolve failed"）。统一换成 / 分隔。
-  const posix = (q) => (process.platform === 'win32' ? String(q).split(String.fromCharCode(92)).join('/') : String(q))
-  // --force-local：GNU tar 会把 `C:` 当远端主机，即使换成 / 也一样，必须显式关掉
-  const tarArgs = (process.platform === 'win32' ? ['--force-local'] : []).concat(['-xzf', posix(tgzPath), '-C', posix(ext)])
-  execFileSync('tar', tarArgs, { stdio: 'pipe' })
+  // A relative archive path works in both GNU tar and Windows bsdtar.
+  execFileSync('tar', ['-xzf', tgzName, '-C', 'extracted'], { cwd: DRILL, stdio: 'pipe' })
   const pkgDir = join(ext, 'package')
   const files = walk(pkgDir)
   report.steps.content = { count: files.length, files }

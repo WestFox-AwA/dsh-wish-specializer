@@ -45,7 +45,11 @@ t('assist=off ⇒ 不注入（"只记录、不补充"这句话必须是真的）
 })
 
 t('三档共享3000 token上限，差异由方向展开程度表达', () => {
-  for (const detail of ['minimal','standard','detailed']) eq(policyFor({detail}).packetBudgetTokens, 3000, detail)
+  for (const detail of ['minimal','standard','detailed']) {
+    const policy = policyFor({detail})
+    eq(policy.packetBudgetTokens, 3000, detail)
+    eq(policy.detail, detail, 'shared ceiling must not collapse the guidance level')
+  }
   eq(policyFor({detail:'nonsense'}).packetBudgetTokens,3000,'非法detail仍用共享上限')
   eq(policyFor({englishMode:true}).packetBudgetChars,12000,'英文字符换算只是旧编译器的近似')
 })

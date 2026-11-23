@@ -180,19 +180,23 @@ if (existsSync(mutPath)) {
     // 同一读法：runner 的最后一行 JSON（前面可能夹着进度输出，见 readSuiteSummary 的说明）
     const j = lastJsonObject(r.stdout)
     if (!j) throw new Error('unparsable-output')
-    // ⚠ **两种失败必须分开报**（2026-10-06）：
-    //   · ANCHOR-MISSING = 变异根本没被写进源码（锚点文本过期）⇒ 它证明的是"守卫失效"；
-    //   · 其余 = 变异真的写进去了、测试却没红 ⇒ 那才是"测试变弱"。
-    //   混成一句"未被捕获"会让人以为要补测试，实际要修的是锚点——方向错了会白花一整天。
-    // 平台跳过的变异体不算漏捕（例：Windows 专属的 %LOCALAPPDATA% 护栏在 Linux 上无从验证）——
-    // 把它们当成漏捕会逼人去删掉那条断言，那才是真的把守卫变弱。
-    const missedAll = j.mutants.filter((m) => m.caught !== true && !m.skipped)
-    const anchorMissing = missedAll.filter((m) => m.status === 'ANCHOR-MISSING').map((m) => m.name)
-    const escaped = missedAll.filter((m) => m.status !== 'ANCHOR-MISSING').map((m) => m.name)
-    mutation = { total: j.mutants.length, sourceFiles: j.sourceFiles || null, missed: missedAll.map((m) => m.name),
-      skipped: (j.skippedByPlatform || []), anchorMissing, escaped, verdict: j.verdict }
-    if (anchorMissing.length > 0) problems.push('变异锚点已失效（源码改了、变异没被应用 ⇒ 这条守卫等于不存在）：' + anchorMissing.join(', '))
-    if (escaped.length > 0) problems.push('变异未被执行捕获（变异已生效但测试没红 ⇒ 测试变弱）：' + escaped.join(', '))
+    if (j.error && !Array.isArray(j.mutants)) {
+      mutation = { error: j.error, testFile: j.testFile || null, exit: r.status, detail: j.baseline || j.files || null }
+      problems.push('变异检验未能运行：' + j.error + (j.testFile ? ' (' + j.testFile + ')' : '')
+        + (mutation.detail ? ' ' + JSON.stringify(mutation.detail).slice(0, 600) : ''))
+    } else {
+      // Missing anchors never ran; syntax/runner errors are not surviving mutants.
+      const missedAll = j.mutants.filter((m) => m.caught !== true && !m.skipped)
+      const anchorMissing = missedAll.filter((m) => m.status === 'ANCHOR-MISSING').map((m) => m.name)
+      const invalid = missedAll.filter((m) => m.status && m.status !== 'ANCHOR-MISSING').map((m) => ({ name: m.name, status: m.status, detail: m.detail }))
+      const escaped = missedAll.filter((m) => !m.status).map((m) => m.name)
+      mutation = { total: j.mutants.length, sourceFiles: j.sourceFiles || null, missed: missedAll.map((m) => m.name),
+        skipped: (j.skippedByPlatform || []), anchorMissing, invalid, escaped, verdict: j.verdict }
+      if (anchorMissing.length > 0) problems.push('变异锚点已失效：' + anchorMissing.join(', '))
+      if (invalid.length > 0) problems.push('变异执行错误：' + invalid.map((m) => m.name + ' (' + m.status + ')').join(', '))
+      if (escaped.length > 0) problems.push('变异未被执行捕获：' + escaped.join(', '))
+      if (r.status !== 0 && missedAll.length === 0) problems.push('变异检验退出异常（exit=' + r.status + '）：' + String(j.verdict || ''))
+    }
   } catch {
     mutation = { error: 'unparsable-output', exit: r.status }
     problems.push('变异检验输出无法解析（exit=' + r.status + '）')

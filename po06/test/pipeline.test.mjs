@@ -70,6 +70,20 @@ test('structured advice accepts text and question fields, preserving prose and c
   assert.equal(out.patch, undefined)
 })
 
+test('valid advice survives missing or invalid optional IDs', async () => {
+  const raw = value({ add: [
+    { text: 'Keep the first suggestion without a citation.' },
+    { id: '  ', text: 'Keep the second suggestion with a blank ID.' },
+    { id: 42, text: 'Keep the third suggestion with a non-string ID.' },
+    { id: 'real-id', text: 'Keep the fourth suggestion and its real citation.' },
+  ] })
+  const out = await handleUserInput(pureAdapter(), session, input(async () => raw))
+  checkPacket(out, true, 'ready')
+  assert.deepEqual(out.optimizer.add, raw.add.map(row => row.text))
+  assert.deepEqual(out.optimizer.sourceIds.add, [null, null, null, 'real-id'])
+  assert.deepEqual(out.packet.dropped, [])
+})
+
 test('valid intent with no advice succeeds as empty without retries or an invented fallback', async () => {
   let calls = 0
   const out = await handleUserInput(pureAdapter({ items: [{ kind: 'user_requirement', text: 'Stale tank requirement' }] }), session, input(async () => { calls++; return value({ add: [] }) }))

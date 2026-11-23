@@ -84,47 +84,90 @@ test('量到的会话窗就是约束边界（右侧栏那一段不算在内）',
   assert.equal(load(narrow).d.composerRegion(narrow.node).source, 'viewport', '过窄读数不可信')
 })
 
-test('面板右缘收在会话窗内：不是贴着视口右边（这就是"被挤到会话窗内"）', () => {
-  const dom = fakeDoc()
+// Model only the measured host rectangles, not React or browser layout.
+function conversationFixture() {
+  const dom = fakeDoc({ cardLeft: 320, cardRight: 1020 })
+  const layout = { left: 288.4, right: 1054.6, top: 143.25, bottom: 730.75, handlesVisible: true }
+  dom.card.getBoundingClientRect = () => ({ left: 320, right: 1020, width: 700, top: layout.bottom })
+  const handle = side => ({ getBoundingClientRect: () => ({
+    width: layout.handlesVisible ? 10 : 0, [side === 'left' ? 'right' : 'left']: layout[side],
+  }) })
+  const handles = { left: handle('left'), right: handle('right') }
+  const content = {
+    getBoundingClientRect: () => ({ top: layout.top, width: 1000 }),
+    querySelector: selector => handles[selector.match(/"(left|right)"/)?.[1]],
+  }
+  const scroll = {}, seat = {}
+  const closest = {
+    '[data-conversation-content]': content, '[data-composer-card]': dom.card,
+    '[data-conversation-scroll]': scroll, '[data-composer-seat]': seat,
+  }
+  dom.node.closest = selector => closest[selector]
+  return { dom, layout, content, scroll, seat, handles }
+}
+const xywh = ({ x, y, w, h }) => ({ x, y, w, h })
+
+test('the host handle inner edges, tabs divider and composer top bound even the default popup', () => {
+  const { dom, content, scroll, seat, handles } = conversationFixture()
   const { d } = load(dom)
-  const rg = d.composerRegion(dom.node)
-  const el = { offsetWidth: 460, offsetHeight: 320 }
-  const pos = d.clampOvPos(960, 96, el, rg)
-  assert.equal(pos.x + el.offsetWidth, rg.right, '面板右缘应正好贴在会话窗右缘')
-  assert.ok(pos.x >= rg.left, '不许越到会话窗左边之外：' + pos.x)
-  const tight = { left: 100, right: 380, w: 280, h: 900 }
-  assert.equal(d.clampOvPos(960, 96, el, tight).x, tight.left, '放不下时贴会话窗左边')
-  assert.ok(d.clampOvSize(460, 320, tight).w <= tight.w, '宽度要能低于 OV_MIN_W 以适配窄会话窗')
-  // 不给 region ⇒ 退回视口。这是**有意的收紧**：旧实现允许拖到只剩 96px 露在边缘，现在只要放得下就整块可见。
-  const vp = d.clampOvPos(960, 96, el)
-  assert.equal(vp.x, 1200 - 460, '没有 region 时按视口保持整块可见')
-  assert.ok(d.clampOvPos(-500, 96, el).x >= 0, '左侧同样不许越出')
+  const r = d.interceptBounds(dom.node)
+  assert.deepEqual([r.left, r.right, r.top, r.bottom], [289, 1054, 144, 730])
+  assert.deepEqual([...r.nodes], [dom.node, content, scroll, seat, dom.card, handles.left, handles.right])
+  assert.deepEqual(xywh(d.fitIntercept(r, null, {}, 320)), { x: 574, y: 156, w: 460, h: 320 })
 })
 
-test('尺寸上限跟着会话窗走；悬浮球同样不允许落在侧栏那一段', () => {
-  const dom = fakeDoc()
+test('dragging past any corner stops against both edges, not the viewport', () => {
+  const { dom } = conversationFixture()
   const { d } = load(dom)
-  const rg = d.composerRegion(dom.node)
-  assert.equal(d.clampOvSize(1000, 320, rg).w, rg.w - 16, '宽度上限 = 会话窗宽 - 16')
-  assert.equal(d.clampOvSize(460, 5000, rg).h, 900 - 16, '高度上限仍按视口')
-  assert.equal(d.defaultBallPos(rg).x, rg.right - 76)
-  assert.equal(d.defaultBallPos({ left: 0, right: 1200 }).x, 1200 - 76, '没有 region 时维持原判据')
+  const r = d.interceptBounds(dom.node)
+  for (const [x, y] of [[-500, -500], [-500, 5000], [5000, -500], [5000, 5000]]) {
+    const p = d.fitIntercept(r, { x, y }, {}, 360)
+    assert.equal(p.x, x < 0 ? r.left : r.right - p.w)
+    assert.equal(p.y, y < 0 ? r.top : r.bottom - p.h)
+    assert.ok(p.y + p.heightLimit <= r.bottom, 'auto-height growth cannot cross composer before remeasurement')
+  }
 })
 
-test('fixed 浮层被 will-change/transform 祖先关住时，位置坐标减去包含块原点（issue #51 / PR53）', () => {
-  const dom = fakeDoc({ cardLeft: 100, cardRight: 900 })
-  const trap = {
+test('resize keeps the top-left fixed, then reflow shrinks and repositions inside changed host edges', () => {
+  const { dom, layout } = conversationFixture()
+  const { d } = load(dom)
+  const start = { x: 560, y: 390 }
+  const r = d.interceptBounds(dom.node)
+  const resized = d.fitIntercept(r, start, { w: 2000, h: 2000 }, 0, true)
+  assert.deepEqual(xywh(resized), { x: 560, y: 390, w: 494, h: 340 })
+  // The viewport stays unchanged; host width handles move and the composer grows.
+  Object.assign(layout, { left: 530, right: 900, top: 180, bottom: 350 })
+  const next = d.interceptBounds(dom.node)
+  assert.deepEqual(xywh(d.fitIntercept(next, resized, resized, 0)), { x: 530, y: 180, w: 370, h: 170 })
+  assert.deepEqual(xywh(d.fitIntercept(next, resized, {}, 880)), { x: 530, y: 180, w: 370, h: 170 })
+})
+
+test('absent or hidden width handles fall back to the owning card without losing the vertical edges', () => {
+  const { dom, layout } = conversationFixture()
+  const { d } = load(dom)
+  layout.handlesVisible = false
+  const r = d.interceptBounds(dom.node)
+  assert.deepEqual([r.left, r.right, r.top, r.bottom], [320, 1020, 144, 730])
+  dom.node.isConnected = false
+  assert.equal(d.fitIntercept(d.interceptBounds(dom.node), null, {}, 320).visible, false)
+})
+
+test('悬浮球 fallback 不落在侧栏那一段', () => {
+  const dom = fakeDoc()
+  const { d } = load(dom)
+  const r = d.composerRegion(dom.node)
+  assert.equal(d.defaultBallPos(r).x, r.right - 76)
+  assert.equal(d.defaultBallPos({ left: 0, right: 1200 }).x, 1200 - 76)
+})
+
+test('legacy inline positioning can still detect the fixed containing block (issue #51 / PR53)', () => {
+  const dom = fakeDoc()
+  dom.card.parentElement = {
     __style: { willChange: 'transform' },
     parentElement: dom.body,
     getBoundingClientRect: () => ({ left: 280, top: 652, width: 993, height: 170 }),
   }
-  dom.card.parentElement = trap
-  const { d } = load(dom)
-  const origin = d.ovContainingBox(dom.node)
-  assert.deepEqual(origin, { x: 280, y: 652, w: 1200, h: 900 })
-  const el = { offsetWidth: 460, offsetHeight: 320, parentElement: dom.node }
-  const pos = d.clampOvPos(0, -700, el, { left: 100, right: 900, w: 800, h: 900 })
-  assert.ok(pos.y <= -644, '屏幕顶部 8px 在包含块坐标里必须允许负 y：' + pos.y)
+  assert.deepEqual(load(dom).d.ovContainingBox(dom.node), { x: 280, y: 652, w: 1200, h: 900 })
 })
 
 // ── 右侧栏可能是固定浮层（不压缩会话列）────────────────────────────────────
@@ -134,8 +177,8 @@ test('固定右侧栏（不压缩会话列）同样能把浮层挤进来', () =>
   const rg = d.composerRegion(dom.node)
   assert.equal(rg.right, 980, '右缘取 min(卡片右缘, 固定侧栏左缘)')
   assert.equal(rg.source, 'composer-card+sidebar', '要如实标出这次是靠侧栏探测收到的边界')
-  const el = { offsetWidth: 460, offsetHeight: 320 }
-  assert.equal(d.clampOvPos(760, 96, el, rg).x + el.offsetWidth, 980, '面板右缘落在侧栏左边，不重合')
+  const p = d.fitIntercept(d.interceptBounds(dom.node), { x: 760, y: 96 }, {}, 320)
+  assert.equal(p.x + p.w, 980, '面板右缘落在侧栏左边，不重合')
 })
 
 test('侧栏探测宁可漏认也不误认：非 fixed / 太窄 / 太矮 / 自己的节点都不算', () => {

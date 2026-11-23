@@ -27,6 +27,8 @@ window.__ModuleLoader__.load({
 
     const React = require('react')
     const h = React.createElement
+    let createPortal
+    try { createPortal = require('react-dom')?.createPortal } catch { /* older Client module tables */ }
 
 // 行标签左边的小图标：极简字形，只做视觉锚点，不承载语义。
 // 放在模块作用域：选项浮层和设置页两处都要用（各闭包里各定义一份必然漏一处）。
@@ -201,7 +203,7 @@ function holdBridgeRead(sessionId) {
     // ⚠ 改 settings.js 的 TIER_PRESETS / TURNS_MIN / TURNS_MAX 必须同步改这里。
     // 构建标记（2026-10-19）：插件改动必须重启才生效，真机上"改了没反应"有一半是构建没换。
     // 这个常量显示在「优化选项」标题右侧，改客户端时**手动更新**（就是这一行的日期时间）。
-    const CLIENT_BUILD = 'ring-13'
+    const CLIENT_BUILD = 'chat-bounds-1'
     // 每个会话已经为哪个预设弹过提示（模块级：组件重挂载不会忘）
     // 一次 DSH 运行进程里**最多提示一次**（用户 2026-10-19 口径）。重启后才会再次提示。
     let PRESET_NOTICE_SHOWN = false
@@ -2597,15 +2599,55 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         return { left, top: 0, right, bottom: v.h, w: right - left, h: v.h, source: src }
       } catch { return full }
     }
-    /**
-     * 位置夹紧。**判据不是"整块面板都得在视口内"，而是"至少留得住一个能抓的地方"**——
-     * 用户 2026-09-22 真机："弹窗还是无法拖动"。真因就在这里：他把面板拉到 **400×748**，
-     * 而窗口高度小于 748+16 ⇒ 旧式 `max(8, v.h - h - 8)` 恒等于 **8** ⇒ **y 被钉死在 8**，
-     * 拖拽照常算、画面却一动不动（x 同样会在面板宽度接近视口时被钉住）。
-     * 现在：横向至少留 `OV_KEEP_X`、纵向至少露出标题栏 `OV_KEEP_Y`，面板因此始终可拖。
-     */
-    const OV_KEEP_X = 96
-    const OV_KEEP_Y = 48
+    // Measure from the owning composer (not the portalled panel). In DSH the
+    // conversation body starts below the tabs divider, and its width handles
+    // are direct children. Keep their hit strips outside the panel.
+    function interceptBounds(anchor) {
+      const v = ovViewport()
+      const card = anchor?.closest?.('[data-composer-card]') || composerCard(anchor)
+      const body = anchor?.closest?.('[data-conversation-content]')
+      const scroll = anchor?.closest?.('[data-conversation-scroll]')
+      const seat = anchor?.closest?.('[data-composer-seat]')
+      const leftHandle = body?.querySelector(':scope > [data-width-handle="left"]')
+      const rightHandle = body?.querySelector(':scope > [data-width-handle="right"]')
+      const lr = leftHandle?.getBoundingClientRect()
+      const rr = rightHandle?.getBoundingClientRect()
+      const row = body?.getBoundingClientRect()
+      const composer = (card || seat)?.getBoundingClientRect()
+      const handles = lr?.width > 0 && rr?.width > 0 && lr.right < rr.left
+      const sideLeft = rightFixedSidebarLeft(anchor)
+      const left = Math.ceil(Math.max(0, handles ? lr.right : (composer?.left ?? 0)))
+      const right = Math.floor(Math.min(v.w, handles ? rr.left : (composer?.right ?? v.w), sideLeft ?? v.w))
+      const top = Math.ceil(Math.max(0, row?.top ?? 0))
+      const bottom = Math.floor(Math.min(v.h, composer?.top ?? v.h))
+      const hidden = !anchor || anchor.isConnected === false || row?.width === 0 || composer?.width === 0
+      return {
+        left, right: hidden ? left : Math.max(left, right), top, bottom: hidden ? top : Math.max(top, bottom),
+        w: hidden ? 0 : Math.max(0, right - left), h: hidden ? 0 : Math.max(0, bottom - top),
+        nodes: [anchor, body, scroll, seat, card, leftHandle, rightHandle].filter(Boolean),
+      }
+    }
+
+    /** Positions live in viewport pixels, including when a panel is reopened. */
+    function fitIntercept(rg, pos, size, measuredH, resizing = false) {
+      const limit = (n, min, max) => Math.min(Math.max(min, Math.round(n)), max)
+      const x = pos ? limit(pos.x, rg.left, Math.max(rg.left, rg.right - 1)) : Math.max(rg.left, rg.right - 480)
+      const y = pos ? limit(pos.y, rg.top, Math.max(rg.top, rg.bottom - 1)) : rg.top + 12
+      const maxW = resizing ? Math.max(0, rg.right - x) : rg.w
+      const maxH = resizing ? Math.max(0, rg.bottom - y) : rg.h
+      const w = limit(size.w ?? 460, Math.min(OV_MIN_W, maxW), maxW)
+      const heightLimit = size.h == null ? Math.min(maxH, 660) : maxH
+      const h = size.h == null
+        ? limit(measuredH || 320, Math.min(240, heightLimit), heightLimit)
+        : limit(size.h, Math.min(OV_MIN_H, heightLimit), heightLimit)
+      const top = limit(y, rg.top, rg.bottom - h)
+      return {
+        x: limit(x, rg.left, rg.right - w), y: top, w, h,
+        // CSS keeps the bottom edge even if text wraps before remeasurement.
+        heightLimit: Math.min(heightLimit, rg.bottom - top), autoHeight: size.h == null,
+        visible: rg.w >= 2 && rg.h >= 2,
+      }
+    }
     /**
      * issue #18：会话窗会因三种原因变，浮层必须**当场**跟上，所以观察点也要三条都接：
      *   ① 窗口缩放 —— `window.resize`；
@@ -2662,52 +2704,6 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
       }
       ovReflowWatchCard()
       return () => { ovReflowSubs.delete(fn) }
-    }
-    const clampOvPos = (x, y, el, region) => {
-      const v = ovViewport()
-      const rg = region || { left: 0, top: 0, right: v.w, bottom: v.h, w: v.w, h: v.h }
-      const w = (el && el.offsetWidth) || 460
-      const h = (el && el.offsetHeight) || 320
-      // 横向第一约束是「右缘收在会话窗内」——这正是"不许与侧栏重合"。
-      // 会话窗比面板还窄时无处可放 ⇒ 先贴左；宽度由 clampOvSize 按同一个 region 收窄，下一帧就能放下。
-      // ⚠ 与改动前的一处**有意差异**：旧实现允许把面板拖到只剩 OV_KEEP_X 露在边缘；
-      //   现在只要放得下就要求**整块可见**（"浮层整个仍在会话窗区域内"是用户给的判据）。
-      //   放不下（面板比会话窗还宽）才退回贴左，并由 clampOvSize 用同一个 region 收窄宽度。
-      const roomy = rg.w >= w + 8
-      // 把「视口坐标下的目标区间」搬到包含块坐标系：减去原点即可。
-      // 例：容器 y=652、想让面板顶端到视口 y=8 ⇒ 允许 pos.y = 8-652 = -644。
-      // 没被关住时 origin 为 0，公式退化成改动前的样子。
-      const o = ovContainingBox(el)
-      const minX = rg.left - o.x
-      const maxX = (roomy ? rg.right - w : rg.left) - o.x
-      const minY = Math.min(8, v.h - h) - o.y   // 面板比视口还高时上边界也放宽（否则会被钉死、拖不动）
-      const maxY = Math.max(8, v.h - OV_KEEP_Y) - o.y
-      return {
-        x: Math.min(Math.max(minX, Math.round(x)), maxX),
-        y: Math.min(Math.max(minY, Math.round(y)), maxY),
-      }
-    }
-    /** 尺寸夹紧（0.5:1154-1161）：不小于 400×320，也不超出视口。 */
-    const clampOvSize = (w, h, region) => {
-      const v = ovViewport()
-      const rg = region || { left: 0, top: 0, right: v.w, bottom: v.h, w: v.w, h: v.h }
-      const out = {}
-      // ⚠ 上限取**会话窗宽度**（不是视口宽度）：侧栏打开后会话窗变窄 ⇒ 面板跟着变窄。
-      //   下界仍尽量保 OV_MIN_W，但会话窗本身就比它窄时只能跟着窄——"放不下"优先于"最小尺寸"。
-      const maxW = Math.max(240, Math.min(rg.w - 16, v.w - 16))
-      const maxH = Math.max(OV_MIN_H, v.h - 16)
-      if (w != null) out.w = Math.min(Math.max(Math.min(OV_MIN_W, maxW), Math.round(w)), maxW)
-      if (h != null) out.h = Math.min(Math.max(OV_MIN_H, Math.round(h)), maxH)
-      return out
-    }
-    /** 面板默认落点（0.5:1922：贴右侧、离顶 96px）。 */
-    const defaultOvPos = (region) => {
-      const rg = region || { left: 0, right: ovViewport().w }
-      // 默认落点也必须落在【包含块坐标系】里：y=96 是「离屏幕顶部 96px」的意思，
-      // 但 pos 会被写进 translate3d，而它相对的是包含块原点。宿主那层 will-change 容器
-      // 在 652 处时，直接写 96 会让面板落在屏幕 748、整块掉出视口（实测可见 0/320px）。
-      const o = ovContainingBox(null)
-      return { x: Math.max(rg.left, rg.right - 480) - o.x, y: 96 - o.y }
     }
     /** 悬浮球默认落点（0.5:1449：右下角内侧）——同样收在会话窗内。 */
     const defaultBallPos = (region) => {
@@ -2923,59 +2919,77 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
       const permission = props.permission
       const rootRef = React.useRef(null)
       const offRef = React.useRef(null)
-      const [pos, setPos] = React.useState(() => props.pos || defaultOvPos())
-      const [size, setSize] = React.useState(() => props.size || { w: null, h: null })
+      const posRef = React.useRef(props.pos || null)
+      const sizeRef = React.useRef(props.size || { w: null, h: null })
+      const viewRef = React.useRef(null)
+      const [view, setView] = React.useState(null)
       const [dragging, setDragging] = React.useState(false)
       const [sizing, setSizing] = React.useState(false)
-      const posRef = React.useRef(pos)
-      const sizeRef = React.useRef(size)
-      posRef.current = pos
-      sizeRef.current = size
+      const portalTarget = typeof createPortal === 'function' && typeof document !== 'undefined' ? document.body : null
 
-      // 卸载即净：拖动中卸载也要摘掉 window 上的监听（这是 0.6 的纪律）
-      React.useEffect(() => () => { if (offRef.current) offRef.current() }, [])
-      // 窗口尺寸变化 ⇒ 重新夹紧位置与尺寸（0.5:1785-1794 的 reflowOverlay）
-      React.useEffect(() => {
-        // issue #18：**右缘收在会话窗内**，并且侧栏开关时立刻重算。
-        // ⚠ 只听 window.resize 会漏掉一半：侧栏开关时**窗口尺寸没变**，变的是会话列宽 ——
-        //   所以这里用 ResizeObserver 直接盯着输入卡片本身。
-        // 默认落点必须在【拿到真实节点之后】再校正一次：defaultOvPos 在 useState 初始化时
-        // 调用，那时没有 DOM，量不出包含块原点。而 pos 会被写进 translate3d，参照的是
-        // 包含块 —— 宿主那层 will-change 容器在 652 处时，y=96 会让面板落在屏幕 748、
-        // 整块掉出视口（实测可见 0/320px）。
-        let seeded = false
-        const reflow = () => {
-          const el = rootRef.current
-          const rg = composerRegion(el)
-          if (el && !seeded) {
-            seeded = true
-            const o = ovContainingBox(el)
-            if (o.x || o.y) {
-              // 把「屏幕坐标下的默认落点」翻译成包含块坐标，再走一次夹紧。
-              setPos((p) => {
-                const n = clampOvPos(p.x - o.x, p.y - o.y, el, rg)
-                return (n.x === p.x && n.y === p.y) ? p : n
-              })
-            }
-          }
-          setPos((p) => { const n = clampOvPos(p.x, p.y, el, rg); return (n.x === p.x && n.y === p.y) ? p : n })
-          setSize((s) => (s.w ? (() => { const n = { ...s, ...clampOvSize(s.w, s.h, rg) }; return (n.w === s.w && n.h === s.h) ? s : n })() : s))
+      const place = (rg, pos, size, resizing = false) => {
+        const el = rootRef.current
+        const fit = fitIntercept(rg, pos, size, el.offsetHeight, resizing)
+        const origin = portalTarget ? { x: 0, y: 0 } : ovContainingBox(el)
+        // Keep the last usable position if the conversation is temporarily hidden.
+        if (fit.visible) posRef.current = { x: fit.x, y: fit.y }
+        const next = { ...fit, x: fit.x - origin.x, y: fit.y - origin.y }
+        const prev = viewRef.current
+        if (!prev || Object.keys(next).some(key => next[key] !== prev[key])) {
+          viewRef.current = next
+          setView(next)
         }
-        reflow()                                    // 挂载即夹一次：默认落点/size 也不能越出会话窗
-        // 侧栏可能是**固定浮层**（不压缩会话列）⇒ 只盯卡片会漏，交给共享观察器（含 body 子节点增删）
-        return ovReflowWatch(reflow, rootRef.current)
-      }, [])
+        return fit
+      }
+      const bounds = () => interceptBounds(props.anchorRef ? props.anchorRef.current : rootRef.current)
+      const useLayout = React.useLayoutEffect || React.useEffect
+      useLayout(() => {
+        const el = rootRef.current
+        if (!el) return undefined
+        let live = true
+        let observed = []
+        const reflow = () => {
+          if (!live || !rootRef.current) return
+          const rg = bounds()
+          const nodes = [el, ...rg.nodes.filter(node => node !== el)]
+          if (observer && (nodes.length !== observed.length || nodes.some((node, i) => node !== observed[i]))) {
+            observer.disconnect()
+            for (const node of nodes) observer.observe(node)
+            observed = nodes
+          }
+          place(rg, posRef.current, sizeRef.current)
+        }
+        // Watch both moving host edges and the auto-height panel (streaming,
+        // disclosure toggles). The shared watcher also picks up width drags:
+        // DSH writes the live width as an inline style on the conversation root.
+        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(reflow) : null
+        reflow()
+        const off = ovReflowWatch(reflow, props.anchorRef?.current || el)
+        const onHostScroll = (event) => {
+          if (!event.target?.nodeType || !el.contains(event.target)) ovReflowAll()
+        }
+        window.addEventListener('scroll', onHostScroll, true)
+        return () => {
+          live = false
+          observer?.disconnect()
+          off()
+          window.removeEventListener('scroll', onHostScroll, true)
+          offRef.current?.()
+        }
+      }, [props.anchorRef, portalTarget])
+
 
       /** 一次指针拖动：move 只写本地值（父组件的 1 秒 tick 重渲染不会把面板弹回去）。 */
       const beginPointer = (e, onMove, onDone) => {
         if (e.button !== 0) return
-        const move = (ev) => onMove(ev)
-        const end = () => {
+        const move = (ev) => { if (ev.pointerId === e.pointerId) onMove(ev) }
+        const end = (ev) => {
+          if (ev && ev.pointerId !== e.pointerId) return
           window.removeEventListener('pointermove', move, true)
           window.removeEventListener('pointerup', end, true)
           window.removeEventListener('pointercancel', end, true)
           offRef.current = null
-          if (typeof onDone === 'function') onDone()
+          if (ev && typeof onDone === 'function') onDone()
         }
         window.addEventListener('pointermove', move, true)
         window.addEventListener('pointerup', end, true)
@@ -2989,33 +3003,33 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
       }
       const onDragStart = (e) => {
         // 起点在按钮上就不启动拖动：preventDefault 会抑制兼容 click，导致「✕ / 底栏按钮」点不动（0.5:1850）
-        if (e.target && e.target.closest && e.target.closest('button')) return
+        if (e.button !== 0 || offRef.current || (e.target && e.target.closest && e.target.closest('button'))) return
         const el = rootRef.current
         if (!el) return
         const r = el.getBoundingClientRect()
         const d = { dx: e.clientX - r.left, dy: e.clientY - r.top }
         setDragging(true)
         beginPointer(e,
-          (ev) => {
-            // ev.clientX/Y 是视口坐标，而 pos 会写进 translate3d（包含块坐标系）。
-            // 被 will-change 祖先关住时两者原点差 (实测 280,652)，先减掉再夹紧。
-            const o = ovContainingBox(el)
-            const n = clampOvPos(ev.clientX - d.dx - o.x, ev.clientY - d.dy - o.y, el, composerRegion(el))
-            posRef.current = n
-            setPos(n)
-          },
+          (ev) => place(bounds(), { x: ev.clientX - d.dx, y: ev.clientY - d.dy }, sizeRef.current),
           () => { setDragging(false); props.onMove(posRef.current) })
       }
       const onSizeDown = (e) => {
-        if (e.button !== 0) return
+        if (e.button !== 0 || offRef.current) return
         const el = rootRef.current
         if (!el) return
         const r = el.getBoundingClientRect()
         const st = { x: e.clientX, y: e.clientY, w: r.width, h: r.height }
+        let resized = false
         setSizing(true)
         beginPointer(e,
-          (ev) => { const n = clampOvSize(st.w + (ev.clientX - st.x), st.h + (ev.clientY - st.y), composerRegion(el)); sizeRef.current = n; setSize(n) },
-          () => { setSizing(false); props.onResize(sizeRef.current) })
+          (ev) => {
+            const fit = place(bounds(), posRef.current,
+              { w: st.w + ev.clientX - st.x, h: st.h + ev.clientY - st.y }, true)
+            if (!fit.visible) return
+            sizeRef.current = { w: fit.w, h: fit.h }
+            resized = true
+          },
+          () => { setSizing(false); if (resized) { props.onMove(posRef.current); props.onResize(sizeRef.current) } })
       }
 
       // ── 内容 ────────────────────────────────────────────────────────
@@ -3102,23 +3116,28 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
                   'Abort this round and send nothing; the draft stays in the box (0.5\u2019s \u2039Back\u203a)')),
             ])
 
-      return h('div', {
+      const compactHeight = view && view.heightLimit < 150
+      const panel = h('div', {
         ...themeAttrs(), ref: rootRef, 'data-po06': 'intercept', 'data-po06-phase': phase, 'data-po06-view': 'panel',
         'data-po06-closing': props['data-po06-closing'] || '0',
         'data-po06-exit': props.exitKind || 'none',
         'data-po06-drag': dragging ? '1' : '0', 'data-po06-size': sizing ? '1' : '0',
         style: {
-          ...S.ov,
-          transform: 'translate3d(' + pos.x + 'px,' + pos.y + 'px,0)',
-          ...(size.w ? { width: size.w + 'px' } : null),
-          height: size.h ? size.h + 'px' : 'auto',
-          maxHeight: size.h ? 'none' : 'min(78vh,660px)',
+          ...S.ov, boxSizing: 'border-box', touchAction: 'auto',
+          visibility: view?.visible ? 'visible' : 'hidden',
+          ...(view ? {
+            transform: 'translate3d(' + view.x + 'px,' + view.y + 'px,0)',
+            width: view.w, minWidth: 0,
+            height: view.autoHeight ? 'auto' : view.h,
+            minHeight: Math.min(240, view.heightLimit), maxHeight: view.heightLimit,
+          } : null),
+          ...(compactHeight ? { overflowY: 'auto', overscrollBehavior: 'contain' } : null),
           ...(dragging || sizing ? { userSelect: 'none' } : null),
         },
       },
         // 可拖的头（0.5:1940-1945）
         h('div', {
-          'data-po06': 'intercept-head', style: S.ovHead, onPointerDown: onDragStart,
+          'data-po06': 'intercept-head', style: { ...S.ovHead, touchAction: 'none' }, onPointerDown: onDragStart,
           title: L('按住拖动（右下角可改大小）', 'Drag to move (resize from the bottom-right corner)'),
         },
           h('span', { 'data-po06': 'intercept-state-dot', 'data-po06-value': phase, style: S.ovDot(phase) }),
@@ -3129,7 +3148,7 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
               L('本会话已拦截 ' + props.count + ' 次', props.count + ' intercepted this session'))
             : null,
           h('span', { 'data-po06': 'intercept-head-hint', style: S.ovHeadHint },
-            size.w ? (size.w + '×' + (size.h || L('自动', 'auto'))) : '↘'),
+            view && !view.autoHeight ? (view.w + '×' + view.h) : '↘'),
           // 收起为球（0.5 定义了 `.dpo-x` 的样式却在最终版里没接上；0.6 明确要求"关闭 → 收成球"）
           h('button', {
             type: 'button', 'data-po06': 'intercept-collapse', style: S.ovX,
@@ -3138,7 +3157,7 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
           }, L('收起', 'Collapse')),
         ),
         // 滚动体（0.5:1946-1961）
-        h('div', { 'data-po06': 'intercept-scroll', style: S.ovScrollY },
+        h('div', { 'data-po06': 'intercept-scroll', style: compactHeight ? { flex: '0 0 auto' } : S.ovScrollY },
           h('div', { 'data-po06': 'intercept-run', style: S.ovRun },
             h('div', { 'data-po06': 'intercept-status', style: S.ovRunStatus },
               statusLabel,
@@ -3288,9 +3307,10 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         ),
         footer,
         // 右下角改尺寸把手（0.5:1966-1969）
-        h('div', { 'data-po06': 'intercept-grip', style: S.ovGrip, onPointerDown: onSizeDown,
+        h('div', { 'data-po06': 'intercept-grip', style: { ...S.ovGrip, touchAction: 'none' }, onPointerDown: onSizeDown,
           title: L('拖动改大小（本次会话内记住）', 'Drag to resize (remembered for this session)') }),
       )
+      return portalTarget ? createPortal(panel, portalTarget) : panel
     }
 
     // ── P11 · 前置拦截（用户要的"第一轮发，第一轮就回"）──────────────────
@@ -4768,7 +4788,7 @@ const useStatus = (sessionId) => usePoll(React.useCallback(
         pipelineReady && ovExit.mounted && ovShown ? h(InterceptPanel, {
           'data-po06-closing': ovExit.closing ? '1' : '0',
           hold: ovShown, phase: ovShown.phase, permission, tier, count: interceptCount, exitKind: ovExitKind,
-          prog: prog, pos: ovGeom.pos, size: ovGeom.size,
+          prog: prog, pos: ovGeom.pos, size: ovGeom.size, anchorRef: rootRef,
           onMove: (p) => setOvGeom((g) => ({ ...g, pos: p })),
           onResize: (z) => setOvGeom((g) => ({ ...g, size: z })),
           onEdit: (e) => {
@@ -5946,7 +5966,7 @@ const react = require("react")
         // 主题调色板（单测拿它算对比度：浅色模式"看不清"这类问题要能被机器挡住，不能只靠肉眼）
         AdvisorControls,EnglishControls,outgoingUserText,injectionCardModel, InjectIcon, Segmented, TierRing, InferenceControls, InferenceMonitor, InferenceEvidenceDetails, InferenceRecordedPlan, inferenceStageLabel, inferencePaceLabel, InterceptPanel, InterceptDraftBody, interceptDraftOutput, advisorValueOf, advisorArgsOf, advisorDraftReply, advisorProgressPct, AdvisorToolRow, AdvisorMaterials, useAdvisorRun, slashReviewAllowed, usageText, normalizeUsage,
         overlayZIndex: OV_Z,
-        composerRegion, ovContainingBox, clampOvPos, clampOvSize, defaultOvPos, defaultBallPos,
+        composerRegion, ovContainingBox, interceptBounds, fitIntercept, defaultBallPos,
         ovReflowWatch, ovReflowAll, EDITABLE_SEL,
         ADVISOR_POLL_MS, ADVISOR_POLL_ERROR_MS, ADVISOR_POLL_IDLE_MS, ADVISOR_POLL_FULL_MS, ADVISOR_REQUEST_TIMEOUT_MS,
         advisorMergeProgress, advisorProgressKey, advisorNextDelayMs, advisorDeltaMiss,

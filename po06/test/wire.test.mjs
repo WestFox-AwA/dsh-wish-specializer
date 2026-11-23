@@ -12,6 +12,7 @@ import {
   resolveInterpreterCfg, decideInterpret, resolveProfileName,
 } from '../lib/wire.js'
 import { safeSessionFile, statePath, createStateStore, inheritStateForFork } from '../lib/store.js'
+import { createState } from '../lib/schema.js'
 
 // ⚠ 必须在**第一次 import index.js 之前**设置：index.js 在模块加载时读 DSH_HOME。
 // 否则单测会往**真实 home** 里写台账与状态文件——测试污染用户环境是不可接受的。
@@ -791,6 +792,42 @@ t('quarantine 把坏文件改名留证据，而不是让它被覆盖', () => {
   eq(existsSync(p), false, '原路径必须不再存在（否则下一次 save 会覆盖它）')
   eq(existsSync(dst), true, '残骸必须在')
   eq(readFileSync(dst, 'utf8'), '{坏掉的长期约束', '**内容必须原样保留**（那可能就是用户的约束）')
+})
+
+// EV-0081: the retained reducer adapter still owns its own state. This is
+// separate from the v3 pre-send path, which intentionally does not create it.
+await ta('EV-0081: recording input never appends reducer state to the host session log', async () => {
+  const { mod, session } = await wireHost({ sid: 'wire-state-record-input' })
+  const initial = mod.adapter.initIntent(session, { taskId: 'input-state' })
+  eq(initial.ok, true, 'positive control: an existing reducer state is required to record input')
+  const recorded = mod.adapter.commitUserInput(session, { messageId: 'human-input-2' })
+  eq(recorded.ok, true, 'the real adapter accepts the input')
+  eq(session.appended, [], 'recording input cannot create an unknown host event')
+  eq(mod.adapter.intentStateOf(session).sourceMessageIds, ['human-input-2'], 'the input was recorded, not ignored')
+  eq(mod.adapter.intentStateOf(session).lastInputRevision, initial.state.revision + 1)
+})
+
+await ta('EV-0081: a committed reducer state is persisted in the plugin store', async () => {
+  const { mod, session } = await wireHost({ sid: 'wire-state-persist' })
+  const committed = mod.adapter.initIntent(session, { taskId: 'persistent-state' })
+  eq(committed.ok, true)
+  eq(mod.adapter.intentStateOf(session), committed.state, 'positive control: the in-memory state is already live')
+  const path = statePath(TEST_HOME, session.id)
+  ok(existsSync(path), 'state in memory is not enough: a per-session disk record must exist')
+  eq(JSON.parse(readFileSync(path, 'utf8')), committed.state, 'the plugin store contains the exact committed state')
+})
+
+await ta('EV-0081: first access restores reducer state from the plugin store', async () => {
+  const { mod, session } = await wireHost({ sid: 'wire-state-cold-reload' })
+  const saved = {
+    ...createState({ sessionId: session.id, taskId: 'retained-before-restart' }),
+    revision: 4, lastInputRevision: 4, sourceMessageIds: ['older-human-input'],
+  }
+  // Seed independently of adapter.land(), so this witnesses the read, not the write.
+  const store = createStateStore({ home: TEST_HOME })
+  eq(store.save(session.id, saved).ok, true)
+  eq(store.load(session.id), saved, 'positive control: valid, nonempty state exists on disk')
+  eq(mod.adapter.intentStateOf(session), saved, 'a cold adapter lookup restores the stored task and revisions')
 })
 
 // ── 4d. 坏掉的状态文件：**不许静默从头开始**（EV-0122）───────────────────

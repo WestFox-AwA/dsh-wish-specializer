@@ -104,6 +104,20 @@ t('工具的思维增量进 sink（开工具时界面才有"思考"可显示）'
   ok(seen.some((d) => typeof d.reasoningChars === 'number'), '每条都要带累计字数（界面按它判断有没有新内容）')
 })
 
+t('工具不可用时普通流仍回传思维', async () => {
+  const seen = []
+  const llm = stubLlm([[reasonDelta('没有授权的项目根目录'), textDelta('plain result'), usageChunk(7), finish()]])
+  const r = await interpretViaLlm({
+    llm, cfg: { provider: 'p', model: 'm' }, userPrompt: 'x', system: 'S',
+    tools: { enabled: true, root: '', reason: 'missing-root' }, onDelta: delta => seen.push(delta),
+  })
+  eq(r.via, 'plain')
+  eq(r.context, null)
+  eq(r.text, 'plain result')
+  eq(llm.calls.length, 1, 'unavailable tools do not create a second request')
+  ok(seen.some(delta => delta.reasoning === '没有授权的项目根目录'), 'plain stream reasoning must reach the UI sink')
+})
+
 // A failed interpretation stays in the same run; the streamed reasoning and usage are retained.
 t('tool prose is rejected by the production parser without a tool-free retry', async () => {
   const root = tmpRoot()

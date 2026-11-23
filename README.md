@@ -1,6 +1,6 @@
 # 许愿特化器 · Wish Specializer
 
-**v0.9.2** · DSH Web 插件 · 包名 `@dsh-external/dsh-wish-specializer`
+**v0.9.3** · DSH Web 插件 · 包名 `@dsh-external/dsh-wish-specializer`
 
 **中文** ｜ [English](README.en.md)
 
@@ -105,7 +105,7 @@
 安装来源只有一个：**本仓库的 Release 附件**（`.tgz`）。
 
 ```powershell
-$v = '0.9.2'; $d = "$env:USERPROFILE\Downloads"
+$v = '0.9.3'; $d = "$env:USERPROFILE\Downloads"
 Invoke-WebRequest "https://github.com/WestFox-AwA/dsh-wish-specializer/releases/download/v$v/dsh-external-dsh-wish-specializer-$v.tgz" -OutFile "$d\dsh-external-dsh-wish-specializer-$v.tgz"
 Invoke-WebRequest "https://github.com/WestFox-AwA/dsh-wish-specializer/releases/download/v$v/SHA256SUMS-$v.txt" -OutFile "$d\SHA256SUMS-$v.txt"
 Get-Content "$d\SHA256SUMS-$v.txt"     # 与下载到的 tgz 比对 sha256
@@ -131,9 +131,9 @@ dsh --profile po061
 
 ## 版本与证据
 
-- 当前：**v0.9.2**；上一个稳定版：v0.9.1
+- 当前：**v0.9.3**；上一个稳定版：v0.9.2
 - 全部套件：`node po06/scripts/run-suites.mjs`；发版门：`node po06/scripts/check-release.mjs`
-- 兼容：`dsh-0.1.7-rc.2`（实测运行）、`dsh-0.2.0-rc.2`（静态契约核对通过）
+- 兼容：最低安装要求 `DSH 0.2.2-rc.1`；本次弹窗修复以 `DSH 0.2.2-rc.5` 桌面端为准
 - 作者：啃轮胎的西狐 · 💬 QQ 群 **1121399051**（版本公告 / 安装帮助）
 
 ## 许可

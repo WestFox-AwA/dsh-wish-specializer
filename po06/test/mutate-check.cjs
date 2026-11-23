@@ -123,22 +123,21 @@ const MUTANTS = [
     expectFailIncludes: ['超量条目'],
   },
   {
-    // 回归护栏：这正是 P3 流水线测试抓到的真实缺陷——
-    // 用解释开始前的旧快照做 dryRun，CAS 变成"旧比旧"，对晚到补丁给出假 OK。
-    name: 'pipeline: dryRun-uses-stale-snapshot',
-    file: 'lib/pipeline.js',
-    testFile: 'test/pipeline.test.mjs',
-    from: 'const dry = dryRun(parsed.patch, current, reduce)',
-    to: 'const dry = dryRun(parsed.patch, base, reduce)',
-    expectFailIncludes: ['并发提交'],
+    // Publication now belongs to the host adapter, not pipeline dryRun/CAS.
+    name: 'index: superseded-result-recheck-removed',
+    file: 'lib/index.js',
+    testFile: 'test/wire.test.mjs',
+    from: '    if (!this.optimizationRuns.isCurrent(run)) {\n      this.capability.abandonInput(sid, run.runId)',
+    to: '    if (false) {\n      this.capability.abandonInput(sid, run.runId)',
+    expectFailIncludes: ['adapter-owned direct runs publish once and reject superseded late computations'],
   },
   {
-    name: 'pipeline: input-change-recheck-removed',
+    name: 'pipeline: post-interpret-abort-recheck-removed',
     file: 'lib/pipeline.js',
     testFile: 'test/pipeline.test.mjs',
-    from: 'if (inputChanged) {',
-    to: 'if (false) {',
-    expectFailIncludes: ['用户改口'],
+    from: "  step('interpret', { ok: true, chars: typeof raw === 'string' ? raw.length : null })\n  if (input.signal?.aborted) return aborted()",
+    to: "  step('interpret', { ok: true, chars: typeof raw === 'string' ? raw.length : null })",
+    expectFailIncludes: ['abort before starting avoids model work; abort during interpretation discards its result'],
   },
   {
     name: 'clarifier: hasQuestion-always-false',
@@ -234,22 +233,21 @@ const MUTANTS = [
     expectFailIncludes: ['turn 作用域只对用户指令合法'],
   },
   {
-    name: 'newround: advance-turn-not-called',
-    file: 'lib/pipeline.js',
-    testFile: 'test/pipeline.test.mjs',
-    from: "    ops: [{ op: 'advance_turn', turnId: 'turn:' + String(input.messageId) }],",
-    to: "    ops: [{ op: 'set_phase', phase: 'working' }],",
-    expectFailIncludes: ['新一轮'],
+    // v3 pipeline does not mutate turns; keep the retirement guard where advance_turn is applied.
+    name: 'reducer: advance-turn-retirement-removed',
+    file: 'lib/reducer.js',
+    testFile: 'test/no-inherit.test.mjs',
+    from: '        next.turnId = String(op.turnId)\n        for (const it of next.items) {',
+    to: '        next.turnId = String(op.turnId)\n        applied += 1\n        break\n        for (const it of next.items) {',
+    expectFailIncludes: ['推进轮次 ⇒ 上一轮的条目整体退场', '待问问题同样不跨轮'],
   },
   {
     name: 'newround: turn-idempotency-removed',
     file: 'lib/reducer.js',
-    testFile: 'test/pipeline.test.mjs',
-    // ⚠ 锚点更新（2026-09-22）：同 longtask 那条——退役条件已经不带 `it.scope === 'turn'`。
-    //   这个变异体的意图是"去掉 turnId 幂等守卫"（同一条消息重放时把自己的本轮条目也退役）。
+    testFile: 'test/no-inherit.test.mjs',
     from: "          if (it.status === 'active' && it.turnId !== next.turnId) {",
     to: "          if (it.status === 'active') { /*MUTANT: 同轮也退役（幂等没了）*/",
-    expectFailIncludes: ['新一轮幂等', '新一轮'],
+    expectFailIncludes: ['同轮重放不退役本轮条目'],
   },
   {
     name: 'carryover: drop-statement-not-rendered',
@@ -1037,20 +1035,23 @@ const MUTANTS = [
     expectFailIncludes: ['工具循环真的跑了一轮'],
   },
   {
-    name: 'index: fallback-sink-dropped',
+    // The current optimizer never retries rejected tool output. When tools are
+    // unavailable before the call, the single plain stream must still report reasoning.
+    name: 'index: unavailable-tools-plain-sink-dropped',
     file: 'lib/index.js',
     testFile: 'test/read-tools.test.mjs',
-    from: '    })), t0, onDelta)',
-    to: '    })), t0) /*MUTANT: 回落不喂思维 sink ⇒ 开着工具时界面看不到思考*/',
-    expectFailIncludes: ['工具回落（无工具那次）不吞思维'],
+    from: '  }), t0, onDelta)\n  return { ...result, via: \'plain\', context: null }',
+    to: '  }), t0)\n  return { ...result, via: \'plain\', context: null }',
+    expectFailIncludes: ['工具不可用时普通流仍回传思维'],
   },
   {
-    name: 'pipeline: invalid-item-id-not-repaired',
-    file: 'lib/pipeline.js',
+    // v3 no longer invents item IDs; unusable optional citation IDs must not drop valid prose.
+    name: 'optimizer-v3: advice-without-valid-id-dropped',
+    file: 'lib/optimizer-protocol.js',
     testFile: 'test/pipeline.test.mjs',
-    from: '      if (!VALID_ID.test(oldId)) {',
-    to: '      if (false) { /*MUTANT: 缺 id / 非法 id 不再补名 ⇒ 整轮 BAD_SCHEMA ⇒ no-packet*/',
-    expectFailIncludes: ['缺 id / 空 id / 非法 id'],
+    from: '      const text = adviceText(row)\n      if (!text) {',
+    to: "      const text = adviceText(row)\n      if (!text || (typeof row === 'object' && !sourceId(row?.id) && !sourceId(row?.sourceId) && !sourceId(value.sourceIds?.[field]?.[index]))) {",
+    expectFailIncludes: ['valid advice survives missing or invalid optional IDs'],
   },
   // ── 运行回顾（EV-0116）：它最关键的判读是**安全性质**——"它替我说了什么"。
   {
@@ -1343,16 +1344,14 @@ const MUTANTS = [
     to: "  return typeof id === 'string' && id ? id : 'm-fabricated' /*MUTANT*/",
     expectFailIncludes: ['消息 id 是幂等键'],
   },
-  // EV-0081 的核心纪律：生产路径**不得**往会话日志 append。
-  // 旁路就藏在 `commitUserInput` 里（它曾自己调了一次 session.append）——
-  // 把它改回去，反回归测试必须变红。
+  // EV-0081：仍保留的 reducer 适配器经插件存储记录输入，不写宿主会话日志。
   {
     name: 'wire: session-log-append-restored',
     file: 'lib/index.js',
     testFile: 'test/wire.test.mjs',
     from: '    return this.land(session, next)',
     to: '    session.append(STATE_EVENT, next); return { ok: true, state: next } /*MUTANT*/',
-    expectFailIncludes: ['EV-0081'],
+    expectFailIncludes: ['recording input never appends reducer state to the host session log'],
   },
   // 状态不落盘 ⇒ 重启后什么都载不回来（A6 失效）。
   {
@@ -1361,7 +1360,7 @@ const MUTANTS = [
     testFile: 'test/wire.test.mjs',
     from: '    const r = this.stateStore ? this.stateStore.save(sid, state) : { ok: true }',
     to: '    const r = { ok: true } /*MUTANT*/',
-    expectFailIncludes: ['EV-0081'],
+    expectFailIncludes: ['a committed reducer state is persisted in the plugin store'],
   },
   // 首次访问不从存储载入 ⇒ 重启后状态丢失（A6 失效的另一种形态）。
   {
@@ -1369,8 +1368,8 @@ const MUTANTS = [
     file: 'lib/index.js',
     testFile: 'test/wire.test.mjs',
     from: '    let loaded = this.stateStore ? this.stateStore.load(sid) : null',
-    to: '    const loaded = null /*MUTANT*/',
-    expectFailIncludes: ['EV-0081'],
+    to: '    let loaded = null /*MUTANT: bypass cold load without breaking fork assignment*/',
+    expectFailIncludes: ['first access restores reducer state from the plugin store'],
   },
   // 文件名不消毒 ⇒ 会话 id 可以带着 ../ 逃出存储目录。
   {
@@ -1935,9 +1934,10 @@ const MUTANTS = [
     name: 'policy: detail-collapsed-to-standard',
     file: 'lib/policy.js',
     testFile: 'test/policy.test.mjs',
-    from: '    packetBudgetChars: DETAIL_BUDGET[s.detail],',
-    to: '    packetBudgetChars: DETAIL_BUDGET.standard, /*MUTANT: 三档变一档*/',
-    expectFailIncludes: ['detail 三档'],
+    // All detail tiers share a token ceiling, but must retain their distinct guidance level.
+    from: '    detail: s.detail,',
+    to: "    detail: 'standard',",
+    expectFailIncludes: ['三档共享3000 token上限，差异由方向展开程度表达'],
   },
   {
     name: 'policy: budget-levels-collapsed',
@@ -1951,9 +1951,11 @@ const MUTANTS = [
     name: 'index: assist-off-guard-removed',
     file: 'lib/index.js',
     testFile: 'test/wire.test.mjs',
-    from: '    if (!pol.injectPacket) {',
-    to: '    if (false) { /*MUTANT: "只记录"也照样解释并注入*/',
-    expectFailIncludes: ['assist=off'],
+    // Both pre-send checks read the same snapshot. Force permission there so
+    // the mutant exercises the actual model call, not an already gated path.
+    from: '  run.policy = readPolicy({ home: DSH_HOME, sessionId: sid })',
+    to: '  run.policy = { ...readPolicy({ home: DSH_HOME, sessionId: sid }), injectPacket: true } /*MUTANT*/',
+    expectFailIncludes: ['pre-send gate and assist=off refuse model calls and packet publication'],
   },
   {
     name: 'index: prompt-override-ignored',
@@ -1964,7 +1966,7 @@ const MUTANTS = [
     //   变异意图不变：**忽略用户保存的提示词**，改用内置常量。
     from: '  const source = resolvePrompt({ home })',
     to: "  const source = { source: 'builtin' } /*MUTANT: 用户保存的提示词被忽略*/",
-    expectFailIncludes: ['po06-prompt.md 覆盖生效'],
+    expectFailIncludes: ['saved custom prompt and prior history reach the actual pre-send model request'],
   },
   // ── 0.6.11 · 档位分层 / 多假设 / 领域维度 / 虚拟 POSIX 层（capability.test.mjs）──
   // 为什么这一组必须存在：这三件事都是**行为**改动，而行为改动的守卫只能靠"删掉它就有人红"来证明。
@@ -1973,8 +1975,8 @@ const MUTANTS = [
     name: 'strategy: candidates-allowed-on-light',
     file: 'lib/strategy.js',
     testFile: 'test/capability.test.mjs',
-    from: "  light: Object.freeze({ mode: 'single', candidates: 0, maxItems: 4, qualityDims: 'refer', depth: 'brief' }),",
-    to: "  light: Object.freeze({ mode: 'branching', candidates: 3, maxItems: 12, qualityDims: 'two', depth: 'deep' }) /*MUTANT: 轻度=重度*/,",
+    from: "  light: Object.freeze({ mode: 'single', candidates: 0, maxItems: 4, qualityDims: 'refer', depth: 'brief', subConcepts: 'off' }),",
+    to: "  light: Object.freeze({ mode: 'single', candidates: 3, maxItems: 4, qualityDims: 'refer', depth: 'brief', subConcepts: 'off' }),",
     expectFailIncludes: ['四档策略互不相同'],
   },
   {
@@ -2126,9 +2128,19 @@ function parseSuiteSummary(text) {
       }
     }
   }
+  if (!found.some(o => o && Number.isInteger(o.pass) && Number.isInteger(o.fail))) {
+    // Pin TAP for node:test suites. Keep failing test names so a crash or an
+    // unrelated failure cannot satisfy a mutant's expected assertion.
+    const count = name => s.match(new RegExp(`^# ${name} (\\d+)\\s*$`, 'm'))?.[1]
+    const pass = count('pass'), fail = count('fail')
+    if (pass !== undefined && fail !== undefined && /^TAP version \d+/m.test(s)) {
+      return { pass: Number(pass), fail: Number(fail),
+        failures: [...s.matchAll(/^\s*not ok \d+ - (.+)$/gm)].map(m => ({ name: m[1].replace(/\\#/g, '#') })) }
+    }
+  }
   for (let k = found.length - 1; k >= 0; k--) {
     const o = found[k]
-    if (o && typeof o === 'object' && (typeof o.pass === 'number' || typeof o.fail === 'number')) return o
+    if (o && Number.isInteger(o.pass) && Number.isInteger(o.fail)) return o
   }
   return null
 }
@@ -2136,10 +2148,13 @@ function parseSuiteSummary(text) {
 function runSuite(testRel) {
   // ⚠ 必须带超时：变异本身可能让被测套件**挂住**（真机每次挂 40 分钟以上就是这么来的），
 // 没有超时的话门禁会一直等，CI 永远不结束。超时按"没通过"计（变异被捕获），并写入 note。
-  const r = spawnSync(process.execPath, [path.join(ROOT, testRel)], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' })
+  const r = spawnSync(process.execPath, ['--test-reporter=tap', path.join(ROOT, testRel)], {
+    encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL', maxBuffer: 2e7,
+  })
   const j = parseSuiteSummary(r.stdout)
-  if (!j) {
-    return { parseError: true, stdout: String(r.stdout).slice(0, 160), stderr: String(r.stderr).split('\n').slice(0, 3).join(' | ') }
+  if (!j || r.error || r.signal || r.status !== (j.fail === 0 ? 0 : 1)) {
+    return { parseError: true, exit: r.status, signal: r.signal, error: r.error?.message,
+      stdout: String(r.stdout).slice(0, 160), stderr: String(r.stderr).split('\n').slice(0, 3).join(' | ') }
   }
   return { pass: j.pass, fail: j.fail, failures: (j.failures || []).map((f) => f.name) }
 }

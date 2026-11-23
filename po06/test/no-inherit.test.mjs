@@ -72,6 +72,17 @@ t('4 待问问题同样不跨轮（上一轮没答的自动转 stale）', () => 
   eq(st.questions.find((q) => q.id === 'q-1').status, 'stale', '第二轮转 stale（不继承）')
 })
 
+t('5 同轮重放不退役本轮条目', () => {
+  let st = createState({ sessionId: sid, taskId: 'default' })
+  st = advance(st, 'turn:1')
+  st = commit(st, [mkReq('req-a', '保留本轮要求')], 'r1')
+  // A distinct cause ID forces the reducer to apply the same turn again.
+  st = commit(st, [{ op: 'advance_turn', turnId: 'turn:1' }], 'replayed-advance')
+  eq(st.turnId, 'turn:1')
+  eq(activeItems(st).map(item => item.id), ['req-a'])
+  eq(st.items[0].staleReason, undefined)
+})
+
 console.log(JSON.stringify({
   suite: 'po06-no-inherit', phase: 'P11', total: pass + failures.length, pass, fail: failures.length, failures,
   note: '轮次之间不遗传：推进轮次 = 上一轮条目与待问问题整体退场（stale，留档），本轮独立重新产生目标。纯函数，不联网、不跑模型。',
